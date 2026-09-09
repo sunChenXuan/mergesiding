@@ -41,24 +41,22 @@ mergesiding 走的是 **stdio MCP**。只要宿主能启动本地 MCP 服务，�
 "command": "D:/Tools/mergesiding.exe"
 ```
 
-## Cursor：建议同时安装配套 Skill
+## 配套 Skill / 规则（示例：Cursor）
 
-**MCP ≠ Skill。** mergesiding 的 MCP 只提供工具（`start` / `ready` / `status` / `abort` / `cleanup`；scheduler 另有 `integrate`）。Cursor 的 `/mergesiding` 来自 **Skill**（`SKILL.md`），不是 MCP 自动注册的。只装 `mcp.json` **不会**出现 `/mergesiding`。
+**MCP ≠ Skill。** mergesiding 的 MCP 只提供工具（`start` / `ready` / `status` / `abort` / `cleanup`；scheduler 另有 `integrate`），适用于**任意** MCP 宿主。宿主侧的 Skill/规则是另一回事：约定用法（不要改 human base checkout、只在 worktree 提交、`ready` 后由人/scheduler `integrate`）。
 
-Skill/Rule 负责约定用法：不要改 human base checkout、只在 worktree 提交、`ready` 后由人/scheduler `integrate`、Cursor 下不要对 linked worktree 调 `move_agent_to_root`。
+示例 — [Cursor](https://cursor.com) 的 Skill（`SKILL.md` / `/mergesiding`）**不会**由 MCP 自动注册。只装 `mcp.json` **不会**出现 `/mergesiding`。对照：有的 Cursor Plugin 在 `plugin.json` 里声明 `"skills": "./skills/"`，装插件就有 skill；mergesiding 当前是二进制 + MCP，需要单独装 Skill/规则（将来可做成 Plugin；目前未提供安装命令）。
 
-对照：Superpowers 一类产品是 Cursor Plugin，`plugin.json` 里有 `"skills": "./skills/"`，装完就有 skill；mergesiding 当前是二进制 + MCP，需要单独装 skill/rule（将来可做成 Plugin；目前未提供安装命令）。
-
-writer/scheduler MCP 配好后，建议让 AI（或自己）复制：
+writer/scheduler MCP 配好后，若使用 Cursor，建议让 AI（或自己）复制：
 
 ```text
 skills/mergesiding/SKILL.md  →  ~/.cursor/skills/mergesiding/SKILL.md
 ```
 
 Windows：`%USERPROFILE%\.cursor\skills\mergesiding\SKILL.md`。  
-备选：把 [cursor-rule-snippet.md](../cursor-rule-snippet.md) 写入 Cursor 用户规则。
+该宿主备选：把 [cursor-rule-snippet.md](../cursor-rule-snippet.md) 写入用户规则（且不要对 linked worktree 调 `move_agent_to_root`）。
 
-没有 Skill 也能用自然语言调用 MCP 工具；多 Agent 并行强烈建议装 Skill。
+其它 MCP 宿主：把同样约定写进各自的系统提示 / 项目说明即可（可用 [cursor-rule-snippet.md](../cursor-rule-snippet.md) 当文案）。没有 Skill 也能自然语言调 MCP；多 Agent 并行强烈建议装宿主侧说明。
 
 ## 可选环境变量
 
@@ -74,4 +72,4 @@ Windows：`%USERPROFILE%\.cursor\skills\mergesiding\SKILL.md`。
 - 没设角色 → 起不来，检查环境变量
 - writer 看不到合并工具 → 正常
 - 任务目录位置不对 → [worktree-layout.zh-CN.md](worktree-layout.zh-CN.md)
-- 只装了 MCP 却没有 `/mergesiding` → 按上文安装配套 Skill
+- 只装了 MCP 却没有 `/mergesiding`（Cursor 示例）→ 按上文安装配套 Skill
