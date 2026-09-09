@@ -32,7 +32,7 @@ func Execute(argv []string) int {
 		return cmdReady(p, args)
 	case "integrate":
 		return cmdIntegrate(p, args)
-	case "status", "list":
+	case "status":
 		slug := ""
 		asJSON := false
 		for i := 0; i < len(args); i++ {
@@ -45,9 +45,6 @@ func Execute(argv []string) int {
 			case "--json":
 				asJSON = true
 			}
-		}
-		if cmd == "list" {
-			slug = ""
 		}
 		return cmdStatus(p, slug, asJSON)
 	case "abort":
@@ -78,8 +75,7 @@ Usage:
   mergesiding ready --slug <slug>
   mergesiding integrate [--all | --slug <slug>] [--json]
   mergesiding status [--slug <slug>] [--json]
-  mergesiding list [--json]
-  mergesiding abort --slug <slug> [--remove-worktree] [--delete-branch]
+  mergesiding abort --slug <slug>
   mergesiding cleanup --slug <slug> (--remove-worktree and/or --delete-branch)
   mergesiding mcp   # MERGESIDING_MCP_ROLE=writer|scheduler`)
 }
@@ -260,12 +256,16 @@ func cmdStatus(p paths.Paths, slug string, asJSON bool) int {
 }
 
 func cmdAbort(p paths.Paths, args []string) int {
+	if hasFlag(args, "--remove-worktree") || hasFlag(args, "--delete-branch") {
+		fmt.Fprintln(os.Stderr, "abort no longer removes git artifacts; use: mergesiding cleanup --slug <slug> --remove-worktree and/or --delete-branch")
+		return 2
+	}
 	slug := flagValue(args, "--slug")
 	if slug == "" {
 		fmt.Fprintln(os.Stderr, "--slug is required")
 		return 2
 	}
-	task, err := abort.Abort(p, slug, hasFlag(args, "--remove-worktree"), hasFlag(args, "--delete-branch"))
+	task, err := abort.Abort(p, slug)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1

@@ -133,7 +133,7 @@ func handleStatus(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolRe
 
 func handleAbort(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	slug, _ := req.GetArguments()["slug"].(string)
-	task, err := abort.Abort(paths.Default(), slug, false, false)
+	task, err := abort.Abort(paths.Default(), slug)
 	if err != nil {
 		return errResult(err)
 	}

@@ -1,18 +1,18 @@
-// Package abort abandons tasks and optionally cleans git artifacts.
+// Package abort abandons tasks without removing git artifacts.
 package abort
 
 import (
 	"fmt"
 
-	"github.com/sunChenXuan/mergesiding/internal/cleanup"
 	"github.com/sunChenXuan/mergesiding/internal/models"
 	"github.com/sunChenXuan/mergesiding/internal/paths"
 	"github.com/sunChenXuan/mergesiding/internal/queue"
 	"github.com/sunChenXuan/mergesiding/internal/store"
 )
 
-// Abort abandons a task: set ABORTED, dequeue, optionally remove git artifacts.
-func Abort(p paths.Paths, taskSlug string, removeWorktree, deleteBranch bool) (*models.TaskRecord, error) {
+// Abort abandons a task: set ABORTED and dequeue. Does not remove worktrees or branches;
+// callers must use cleanup after abort when disk cleanup is desired.
+func Abort(p paths.Paths, taskSlug string) (*models.TaskRecord, error) {
 	s := store.Store{Paths: p}
 	task, err := s.Load(taskSlug)
 	if err != nil {
@@ -34,11 +34,6 @@ func Abort(p paths.Paths, taskSlug string, removeWorktree, deleteBranch bool) (*
 	task.Status = models.StatusAborted
 	if err := s.Save(task); err != nil {
 		return nil, err
-	}
-	if removeWorktree || deleteBranch {
-		if _, err := cleanup.CleanupTask(task, removeWorktree, deleteBranch); err != nil {
-			return task, err
-		}
 	}
 	return task, nil
 }
