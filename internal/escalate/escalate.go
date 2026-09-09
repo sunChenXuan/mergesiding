@@ -11,6 +11,7 @@ import (
 
 	"github.com/sunChenXuan/mergesiding/internal/models"
 	"github.com/sunChenXuan/mergesiding/internal/paths"
+	"github.com/sunChenXuan/mergesiding/internal/slug"
 )
 
 // EnvResumeCmd is an optional shell command with {writer_id} placeholder.
@@ -19,12 +20,22 @@ const EnvResumeCmd = "MERGESIDING_RESUME_CMD"
 // EnvResumeCmdLegacy is accepted for migration.
 const EnvResumeCmdLegacy = "AGENT_GIT_RESUME_CMD"
 
+func escalatePath(p paths.Paths, taskSlug string) (string, error) {
+	if err := slug.Validate(taskSlug); err != nil {
+		return "", err
+	}
+	return filepath.Join(p.EscalateDir(), taskSlug+".md"), nil
+}
+
 // WriteConflictEscalation writes rebase conflict instructions for the writer.
 func WriteConflictEscalation(p paths.Paths, task *models.TaskRecord, binding models.RepoBinding, conflicts []string) (string, error) {
 	if err := p.Ensure(); err != nil {
 		return "", err
 	}
-	path := filepath.Join(p.EscalateDir(), task.Slug+".md")
+	path, err := escalatePath(p, task.Slug)
+	if err != nil {
+		return "", err
+	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "# Conflict: %s\n\n", task.Slug)
 	fmt.Fprintf(&b, "writerId: %s\n", deref(task.WriterID))
@@ -58,7 +69,10 @@ func WriteVerifyEscalation(p paths.Paths, task *models.TaskRecord, binding model
 	if err := p.Ensure(); err != nil {
 		return "", err
 	}
-	path := filepath.Join(p.EscalateDir(), task.Slug+".md")
+	path, err := escalatePath(p, task.Slug)
+	if err != nil {
+		return "", err
+	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "# Verify failed: %s\n\n", task.Slug)
 	fmt.Fprintf(&b, "writerId: %s\n", deref(task.WriterID))
@@ -83,6 +97,7 @@ func WriteVerifyEscalation(p paths.Paths, task *models.TaskRecord, binding model
 }
 
 // TryResumeWriter runs MERGESIDING_RESUME_CMD with {writer_id} substituted when set.
+// writer_id must pass ValidateWriterID; otherwise the hook is skipped to avoid shell injection.
 func TryResumeWriter(writerID *string) {
 	cmdTpl := os.Getenv(EnvResumeCmd)
 	if cmdTpl == "" {
@@ -95,6 +110,9 @@ func TryResumeWriter(writerID *string) {
 	if writerID != nil {
 		id = *writerID
 	}
+	if id == "" || slug.ValidateWriterID(id) != nil {
+		return
+	}
 	cmdTpl = strings.ReplaceAll(cmdTpl, "{writer_id}", id)
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
@@ -106,8 +124,11 @@ func TryResumeWriter(writerID *string) {
 }
 
 // PathFor returns escalate markdown path if it exists.
-func PathFor(p paths.Paths, slug string) string {
-	path := filepath.Join(p.EscalateDir(), slug+".md")
+func PathFor(p paths.Paths, taskSlug string) string {
+	path, err := escalatePath(p, taskSlug)
+	if err != nil {
+		return ""
+	}
 	if _, err := os.Stat(path); err == nil {
 		return path
 	}

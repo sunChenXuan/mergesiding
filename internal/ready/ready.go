@@ -12,12 +12,15 @@ import (
 )
 
 // MarkReady marks a task ready when worktrees are clean and have commits ahead.
-func MarkReady(p paths.Paths, slug string) (*models.TaskRecord, error) {
+func MarkReady(p paths.Paths, taskSlug string) (*models.TaskRecord, error) {
 	s := store.Store{Paths: p}
-	task, err := s.Load(slug)
+	task, err := s.Load(taskSlug)
 	if err != nil {
 		return nil, err
 	}
+	prevStatus := task.Status
+	prevReadyAt := task.ReadyAt
+	prevError := task.Error
 	switch task.Status {
 	case models.StatusActive, models.StatusAwaitingWriter, models.StatusBlocked:
 	default:
@@ -46,8 +49,14 @@ func MarkReady(p paths.Paths, slug string) (*models.TaskRecord, error) {
 	if err := s.Save(task); err != nil {
 		return nil, err
 	}
-	if err := (queue.ReadyQueue{Paths: p}).Enqueue(slug); err != nil {
-		return nil, err
+	if err := (queue.ReadyQueue{Paths: p}).Enqueue(taskSlug); err != nil {
+		task.Status = prevStatus
+		task.ReadyAt = prevReadyAt
+		task.Error = prevError
+		if rbErr := s.Save(task); rbErr != nil {
+			return nil, fmt.Errorf("enqueue failed: %v (also rollback save: %w)", err, rbErr)
+		}
+		return nil, fmt.Errorf("enqueue failed: %w", err)
 	}
 	return task, nil
 }

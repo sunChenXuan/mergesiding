@@ -28,7 +28,9 @@ projects/
 - 写成相对路径（如 `../.agent-git-worktrees/my-app`）→ 相对**仓库根目录**计算，不要按 Cursor 当前工作目录猜
 - 什么都不写 → 用上面的默认
 
-一次开多个仓库、又共用一个根目录时：`<共用根>/<仓库名>/<任务名>`。
+一次开多个仓库、又共用一个根目录时（CLI/MCP `--worktree-root` / `worktree_root`，或环境变量 `MERGESIDING_WORKTREE_ROOT`）：`<共用根>/<仓库名>/<任务名>`。
+
+仓库自己的 `.mergesiding.json` 里的 `worktreeRoot` **不会**再套一层仓库名（配置本身就已经指向该仓目录）。
 
 ## 如果非要塞进仓库里面
 

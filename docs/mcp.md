@@ -48,7 +48,7 @@ macOS/Linux example: `/Users/you/bin/mergesiding`.
 - `MERGESIDING_MCP_ROLE` — `writer` or `scheduler` (required for `mcp`)
 - `MERGESIDING_HOME` — task state directory (default `~/.mergesiding`)
 - `MERGESIDING_WORKTREE_ROOT` — override where task folders are created
-- `MERGESIDING_RESUME_CMD` — optional shell when a conflict needs the writer again; supports `{writer_id}`
+- `MERGESIDING_RESUME_CMD` — optional shell when a conflict needs the writer again; supports `{writer_id}`. Runs via `sh -c` / `cmd /C`. `writer_id` must be shell-safe (`[A-Za-z0-9._:@/+-]`); otherwise the hook is skipped.
 
 Legacy `AGENT_GIT_*` names still work.
 

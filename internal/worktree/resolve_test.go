@@ -62,6 +62,39 @@ func TestRelativeRepoConfigRoot(t *testing.T) {
 	}
 }
 
+func TestRejectsHostileSlug(t *testing.T) {
+	repo := filepath.Join(t.TempDir(), "projects", "my-app")
+	if err := osMkdirAll(repo); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ResolveWorktreePath(ResolveInput{RepoRoot: repo, Slug: "../escape"}); err == nil {
+		t.Fatal("expected hostile slug to fail")
+	}
+}
+
+func TestMultiRepoEnvNestsByRepoName(t *testing.T) {
+	base := t.TempDir()
+	repo := filepath.Join(base, "my-app")
+	if err := osMkdirAll(repo); err != nil {
+		t.Fatal(err)
+	}
+	shared := t.TempDir()
+	t.Setenv(EnvWorktreeRoot, shared)
+	t.Setenv(EnvWorktreeRootLegacy, "")
+	got, err := ResolveWorktreePath(ResolveInput{
+		RepoRoot:  repo,
+		Slug:      "feat",
+		MultiRepo: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(shared, "my-app", "feat")
+	if got != want {
+		t.Fatalf("got %q want %q", got, want)
+	}
+}
+
 func osMkdirAll(p string) error {
 	return mkdirAll(p)
 }

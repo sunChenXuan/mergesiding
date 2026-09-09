@@ -28,7 +28,9 @@ You can pass a folder when starting, set `MERGESIDING_WORKTREE_ROOT`, or put `wo
 - Relative path (e.g. `../.agent-git-worktrees/my-app`) → resolved from the **repo root**, not from whatever directory Cursor happened to start in.
 - Nothing set → default above.
 
-If you start several repos at once with one shared root, each repo gets its own subfolder: `<shared>/<repo-name>/<task-name>`.
+If you start several repos at once with one shared root (CLI/MCP `--worktree-root` / `worktree_root`, or `MERGESIDING_WORKTREE_ROOT`), each repo gets its own subfolder: `<shared>/<repo-name>/<task-name>`.
+
+Per-repo `worktreeRoot` in `.mergesiding.json` does **not** add an extra repo-name segment (the config already points at that repo’s folder).
 
 ## If you put folders inside the repo
 

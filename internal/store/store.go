@@ -10,6 +10,7 @@ import (
 
 	"github.com/sunChenXuan/mergesiding/internal/models"
 	"github.com/sunChenXuan/mergesiding/internal/paths"
+	"github.com/sunChenXuan/mergesiding/internal/slug"
 )
 
 // ErrNotFound is returned when a task slug has no JSON file.
@@ -28,6 +29,9 @@ func (s Store) Exists(slug string) bool {
 
 // Save writes a task record atomically-ish via temp + rename.
 func (s Store) Save(task *models.TaskRecord) error {
+	if err := slug.Validate(task.Slug); err != nil {
+		return err
+	}
 	if err := s.Paths.Ensure(); err != nil {
 		return err
 	}
@@ -40,12 +44,20 @@ func (s Store) Save(task *models.TaskRecord) error {
 	if err := os.WriteFile(tmp, append(data, '\n'), 0o644); err != nil {
 		return err
 	}
-	return os.Rename(tmp, path)
+	_ = os.Remove(path)
+	if err := os.Rename(tmp, path); err != nil {
+		_ = os.Remove(tmp)
+		return err
+	}
+	return nil
 }
 
 // Load reads a task by slug.
-func (s Store) Load(slug string) (*models.TaskRecord, error) {
-	data, err := os.ReadFile(s.Paths.TaskFile(slug))
+func (s Store) Load(taskSlug string) (*models.TaskRecord, error) {
+	if err := slug.Validate(taskSlug); err != nil {
+		return nil, err
+	}
+	data, err := os.ReadFile(s.Paths.TaskFile(taskSlug))
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, ErrNotFound

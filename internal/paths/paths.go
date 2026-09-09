@@ -50,6 +50,11 @@ func (p Paths) LogsDir() string { return filepath.Join(p.Root, "logs") }
 // IntegrateLock returns the integrate lock file path.
 func (p Paths) IntegrateLock() string { return filepath.Join(p.LocksDir(), "integrate.lock") }
 
+// ReadyQueueLock returns the lock file guarding ready-queue read-modify-write.
+func (p Paths) ReadyQueueLock() string {
+	return filepath.Join(p.LocksDir(), "ready-queue.lock")
+}
+
 // ReadyQueue returns the ready queue JSON path.
 func (p Paths) ReadyQueue() string { return filepath.Join(p.QueueDir(), "ready.json") }
 

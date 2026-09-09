@@ -46,7 +46,7 @@ mergesiding 走的是 **stdio MCP**。只要宿主能启动本地 MCP 服务，�
 - `MERGESIDING_MCP_ROLE`：`writer` 或 `scheduler`（跑 `mcp` 时必填）
 - `MERGESIDING_HOME`：任务状态目录，默认 `~/.mergesiding`
 - `MERGESIDING_WORKTREE_ROOT`：任务目录建在哪
-- `MERGESIDING_RESUME_CMD`：冲突后可选钩子，可用 `{writer_id}`
+- `MERGESIDING_RESUME_CMD`：冲突后可选钩子，可用 `{writer_id}`。通过 `sh -c` / `cmd /C` 执行；`writer_id` 必须是安全字符（`[A-Za-z0-9._:@/+-]`），否则跳过钩子。
 
 旧名 `AGENT_GIT_*` 仍然认。
 

@@ -12,9 +12,9 @@ import (
 )
 
 // Abort abandons a task: set ABORTED, dequeue, optionally remove git artifacts.
-func Abort(p paths.Paths, slug string, removeWorktree, deleteBranch bool) (*models.TaskRecord, error) {
+func Abort(p paths.Paths, taskSlug string, removeWorktree, deleteBranch bool) (*models.TaskRecord, error) {
 	s := store.Store{Paths: p}
-	task, err := s.Load(slug)
+	task, err := s.Load(taskSlug)
 	if err != nil {
 		return nil, err
 	}
@@ -24,7 +24,9 @@ func Abort(p paths.Paths, slug string, removeWorktree, deleteBranch bool) (*mode
 	default:
 		return nil, fmt.Errorf("cannot abort task in status %s", task.Status)
 	}
-	_ = (queue.ReadyQueue{Paths: p}).Remove(slug)
+	if err := (queue.ReadyQueue{Paths: p}).Remove(taskSlug); err != nil {
+		return nil, fmt.Errorf("dequeue before abort: %w", err)
+	}
 	msg := "aborted"
 	if task.Error == nil {
 		task.Error = &msg

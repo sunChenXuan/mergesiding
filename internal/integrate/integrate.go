@@ -28,6 +28,20 @@ type Outcome struct {
 	EscalatePath string
 }
 
+// Failed reports whether the outcome should be treated as a non-success exit.
+func (o Outcome) Failed() bool {
+	if o.Empty {
+		return false
+	}
+	if o.Error != nil {
+		return true
+	}
+	if o.FinalStatus == nil {
+		return o.Message != ""
+	}
+	return *o.FinalStatus != models.StatusDone
+}
+
 // ToDict returns stable fields for CLI --json / MCP consumers.
 func (o Outcome) ToDict() map[string]any {
 	var status any
@@ -73,17 +87,27 @@ func stopBatch(st models.TaskStatus) bool {
 	}
 }
 
-func outcomeFromTask(p paths.Paths, slug string, task *models.TaskRecord, message string) Outcome {
+func outcomeFromTask(p paths.Paths, taskSlug string, task *models.TaskRecord, message string) Outcome {
 	st := task.Status
-	esc := escalate.PathFor(p, slug)
+	esc := escalate.PathFor(p, taskSlug)
 	return Outcome{
-		Slug:         slug,
+		Slug:         taskSlug,
 		FinalStatus:  &st,
 		Error:        task.Error,
 		StopBatch:    stopBatch(st),
 		Message:      message,
 		EscalatePath: esc,
 	}
+}
+
+func persistBlocked(s store.Store, q queue.ReadyQueue, task *models.TaskRecord, taskSlug string) error {
+	if err := s.Save(task); err != nil {
+		return err
+	}
+	if err := q.Remove(taskSlug); err != nil {
+		return err
+	}
+	return nil
 }
 
 func resolvedRepoPath(bindingPath string) string {
@@ -94,27 +118,33 @@ func resolvedRepoPath(bindingPath string) string {
 	return abs
 }
 
-func runPhaseA(p paths.Paths, s store.Store, q queue.ReadyQueue, slug string, task *models.TaskRecord) *Outcome {
+func runPhaseA(p paths.Paths, s store.Store, q queue.ReadyQueue, taskSlug string, task *models.TaskRecord) *Outcome {
 	for _, binding := range task.Repos {
 		base := binding.Path
 		wt := binding.WorktreePath
 		clean, err := gitops.IsClean(base)
-		if err != nil || !clean {
+		if err != nil {
+			msg := fmt.Sprintf("base checkout status failed: %v", err)
+			task.Status = models.StatusBlocked
+			task.Error = &msg
+			_ = persistBlocked(s, q, task, taskSlug)
+			o := outcomeFromTask(p, taskSlug, task, "")
+			return &o
+		}
+		if !clean {
 			msg := fmt.Sprintf("base checkout dirty: %s", base)
 			task.Status = models.StatusBlocked
 			task.Error = &msg
-			_ = s.Save(task)
-			_ = q.Remove(slug)
-			o := outcomeFromTask(p, slug, task, "")
+			_ = persistBlocked(s, q, task, taskSlug)
+			o := outcomeFromTask(p, taskSlug, task, "")
 			return &o
 		}
 		if _, err := gitops.Run(base, "checkout", binding.IntegrationBranch); err != nil {
 			msg := err.Error()
 			task.Status = models.StatusBlocked
 			task.Error = &msg
-			_ = s.Save(task)
-			_ = q.Remove(slug)
-			o := outcomeFromTask(p, slug, task, "")
+			_ = persistBlocked(s, q, task, taskSlug)
+			o := outcomeFromTask(p, taskSlug, task, "")
 			return &o
 		}
 		upstreamOut, err := gitops.Run(base, "rev-parse", binding.IntegrationBranch)
@@ -122,50 +152,65 @@ func runPhaseA(p paths.Paths, s store.Store, q queue.ReadyQueue, slug string, ta
 			msg := err.Error()
 			task.Status = models.StatusBlocked
 			task.Error = &msg
-			_ = s.Save(task)
-			_ = q.Remove(slug)
-			o := outcomeFromTask(p, slug, task, "")
+			_ = persistBlocked(s, q, task, taskSlug)
+			o := outcomeFromTask(p, taskSlug, task, "")
 			return &o
 		}
 		result := gitops.RebaseOnto(wt, strings.TrimSpace(upstreamOut))
 		if !result.OK {
 			if len(result.Conflicts) > 0 {
-				esc, _ := escalate.WriteConflictEscalation(p, task, binding, result.Conflicts)
+				esc, escErr := escalate.WriteConflictEscalation(p, task, binding, result.Conflicts)
 				escalate.TryResumeWriter(task.WriterID)
-				msg := fmt.Sprintf("conflicts: %v; see %s", result.Conflicts, esc)
+				var msg string
+				if escErr != nil {
+					msg = fmt.Sprintf("conflicts: %v; escalate write failed: %v", result.Conflicts, escErr)
+				} else {
+					msg = fmt.Sprintf("conflicts: %v; see %s", result.Conflicts, esc)
+				}
 				task.Status = models.StatusAwaitingWriter
 				task.Error = &msg
-				_ = s.Save(task)
-				_ = q.Remove(slug)
-				o := outcomeFromTask(p, slug, task, "")
+				_ = persistBlocked(s, q, task, taskSlug)
+				o := outcomeFromTask(p, taskSlug, task, "")
 				return &o
 			}
+			gitops.AbortRebase(wt)
 			msg := result.Message
 			task.Status = models.StatusBlocked
 			task.Error = &msg
-			_ = s.Save(task)
-			_ = q.Remove(slug)
-			o := outcomeFromTask(p, slug, task, "")
+			_ = persistBlocked(s, q, task, taskSlug)
+			o := outcomeFromTask(p, taskSlug, task, "")
 			return &o
 		}
-		cfg, _ := config.Load(base)
-		vr := verify.Run(wt, cfg.Verify)
-		if !vr.OK {
-			esc, _ := escalate.WriteVerifyEscalation(p, task, binding, vr.Log)
-			escalate.TryResumeWriter(task.WriterID)
-			msg := fmt.Sprintf("verify failed; see %s", esc)
+		cfg, err := config.Load(base)
+		if err != nil {
+			msg := fmt.Sprintf("load verify config: %v", err)
 			task.Status = models.StatusBlocked
 			task.Error = &msg
-			_ = s.Save(task)
-			_ = q.Remove(slug)
-			o := outcomeFromTask(p, slug, task, "")
+			_ = persistBlocked(s, q, task, taskSlug)
+			o := outcomeFromTask(p, taskSlug, task, "")
+			return &o
+		}
+		vr := verify.Run(wt, cfg.Verify)
+		if !vr.OK {
+			esc, escErr := escalate.WriteVerifyEscalation(p, task, binding, vr.Log)
+			escalate.TryResumeWriter(task.WriterID)
+			var msg string
+			if escErr != nil {
+				msg = fmt.Sprintf("verify failed; escalate write failed: %v", escErr)
+			} else {
+				msg = fmt.Sprintf("verify failed; see %s", esc)
+			}
+			task.Status = models.StatusBlocked
+			task.Error = &msg
+			_ = persistBlocked(s, q, task, taskSlug)
+			o := outcomeFromTask(p, taskSlug, task, "")
 			return &o
 		}
 	}
 	return nil
 }
 
-func runPhaseB(p paths.Paths, s store.Store, q queue.ReadyQueue, slug string, task *models.TaskRecord, skipMerged bool) Outcome {
+func runPhaseB(p paths.Paths, s store.Store, q queue.ReadyQueue, taskSlug string, task *models.TaskRecord, skipMerged bool) Outcome {
 	merged := []string{}
 	if skipMerged {
 		for _, m := range task.MergedRepos {
@@ -192,31 +237,38 @@ func runPhaseB(p paths.Paths, s store.Store, q queue.ReadyQueue, slug string, ta
 			task.MergedRepos = merged
 			msg := fmt.Sprintf("merged=%v; error=%v", merged, err)
 			task.Error = &msg
-			_ = s.Save(task)
-			_ = q.Remove(slug)
-			return outcomeFromTask(p, slug, task, "")
+			if perr := persistBlocked(s, q, task, taskSlug); perr != nil {
+				msg2 := fmt.Sprintf("%s; persist: %v", msg, perr)
+				task.Error = &msg2
+			}
+			return outcomeFromTask(p, taskSlug, task, "")
 		}
 		if err := gitops.MergeFFOrNoFF(base, binding.Branch); err != nil {
 			task.Status = models.StatusBlockedPartial
 			task.MergedRepos = merged
 			msg := fmt.Sprintf("merged=%v; error=%v", merged, err)
 			task.Error = &msg
-			_ = s.Save(task)
-			_ = q.Remove(slug)
-			return outcomeFromTask(p, slug, task, "")
+			if perr := persistBlocked(s, q, task, taskSlug); perr != nil {
+				msg2 := fmt.Sprintf("%s; persist: %v", msg, perr)
+				task.Error = &msg2
+			}
+			return outcomeFromTask(p, taskSlug, task, "")
 		}
 		merged = append(merged, resolved)
 	}
 	task.Status = models.StatusDone
 	task.Error = nil
 	task.MergedRepos = []string{}
-	_ = s.Save(task)
-	_ = q.Remove(slug)
-	return outcomeFromTask(p, slug, task, "")
+	if err := persistBlocked(s, q, task, taskSlug); err != nil {
+		msg := fmt.Sprintf("merged ok but persist failed: %v", err)
+		task.Error = &msg
+		return outcomeFromTask(p, taskSlug, task, "")
+	}
+	return outcomeFromTask(p, taskSlug, task, "")
 }
 
 // IntegrateOne integrates one task: peek queue or target a slug for resume/recovery.
-func IntegrateOne(p paths.Paths, slug *string) Outcome {
+func IntegrateOne(p paths.Paths, taskSlug *string) Outcome {
 	s := store.Store{Paths: p}
 	q := queue.ReadyQueue{Paths: p}
 	lk := &lock.IntegrateLock{Paths: p}
@@ -226,10 +278,10 @@ func IntegrateOne(p paths.Paths, slug *string) Outcome {
 	}
 	defer lk.Release()
 
-	explicit := slug != nil
+	explicit := taskSlug != nil
 	var target string
 	if explicit {
-		target = *slug
+		target = *taskSlug
 	} else {
 		peek, ok, err := q.Peek()
 		if err != nil {
@@ -252,8 +304,7 @@ func IntegrateOne(p paths.Paths, slug *string) Outcome {
 		msg := "crash recovery: task was integrating; manual review required"
 		task.Status = models.StatusBlocked
 		task.Error = &msg
-		_ = s.Save(task)
-		_ = q.Remove(target)
+		_ = persistBlocked(s, q, task, target)
 		return outcomeFromTask(p, target, task, "")
 	}
 
@@ -270,7 +321,10 @@ func IntegrateOne(p paths.Paths, slug *string) Outcome {
 	}
 
 	task.Status = models.StatusIntegrating
-	_ = s.Save(task)
+	if err := s.Save(task); err != nil {
+		msg := err.Error()
+		return Outcome{Slug: target, Error: &msg, Message: msg, StopBatch: true}
+	}
 
 	if phaseA := runPhaseA(p, s, q, target, task); phaseA != nil {
 		return *phaseA
@@ -292,7 +346,7 @@ func IntegrateAll(p paths.Paths) ([]Outcome, map[string]any) {
 		}
 	}
 	summary := map[string]any{
-		"count": len(results),
+		"count":   len(results),
 		"stopped": len(results) > 0 && results[len(results)-1].StopBatch,
 	}
 	return results, summary

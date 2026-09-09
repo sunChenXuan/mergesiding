@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/sunChenXuan/mergesiding/internal/slug"
 )
 
 // EnvWorktreeRoot overrides worktree root when set (shared-parent semantics for multi-repo).
@@ -19,11 +21,14 @@ type ResolveInput struct {
 	Slug           string  // task slug
 	SharedRoot     *string // CLI/MCP flag; relative → repo root; multi-repo uses shared/<repo>/<slug>
 	RepoConfigRoot *string // from .mergesiding.json / .agent-git.json worktreeRoot
-	MultiRepo      bool    // when SharedRoot set and true, append repo name before slug
+	MultiRepo      bool    // when true under shared/env root, append repo name before slug
 }
 
 // ResolveWorktreePath returns the final worktree directory for one repo+slug.
 func ResolveWorktreePath(in ResolveInput) (string, error) {
+	if err := slug.Validate(in.Slug); err != nil {
+		return "", err
+	}
 	repoRoot, err := filepath.Abs(in.RepoRoot)
 	if err != nil {
 		return "", err

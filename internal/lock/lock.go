@@ -4,6 +4,7 @@ package lock
 import (
 	"errors"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/sunChenXuan/mergesiding/internal/paths"
@@ -59,4 +60,35 @@ func (l *IntegrateLock) Release() error {
 		return err
 	}
 	return cerr
+}
+
+// HoldExclusive opens path, takes an exclusive lock, runs fn, then unlocks.
+// When blocking is false, fails immediately if the lock is held.
+func HoldExclusive(path string, blocking bool, timeout time.Duration, fn func() error) error {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	start := time.Now()
+	for {
+		f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o644)
+		if err != nil {
+			return err
+		}
+		if err := tryExclusive(f); err != nil {
+			_ = f.Close()
+			if !blocking {
+				return ErrTimeout
+			}
+			if timeout > 0 && time.Since(start) > timeout {
+				return ErrTimeout
+			}
+			time.Sleep(50 * time.Millisecond)
+			continue
+		}
+		runErr := fn()
+		_ = unlock(f)
+		_ = f.Close()
+		return runErr
+	}
 }

@@ -154,36 +154,52 @@ func cmdReady(p paths.Paths, args []string) int {
 func cmdIntegrate(p paths.Paths, args []string) int {
 	all := hasFlag(args, "--all")
 	asJSON := hasFlag(args, "--json")
-	slug := flagValue(args, "--slug")
-	if all && slug != "" {
+	slugArg := flagValue(args, "--slug")
+	if all && slugArg != "" {
 		fmt.Fprintln(os.Stderr, "--all and --slug are mutually exclusive")
 		return 2
 	}
 	if all {
 		results, summary := integrate.IntegrateAll(p)
+		failed := false
+		for _, out := range results {
+			if out.Failed() {
+				failed = true
+			}
+		}
 		if asJSON {
-			_ = json.NewEncoder(os.Stdout).Encode(map[string]any{
+			if err := json.NewEncoder(os.Stdout).Encode(map[string]any{
 				"results": mapOutcomes(results),
 				"summary": summary,
-			})
-			return 0
+			}); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return 1
+			}
+		} else {
+			for _, out := range results {
+				printIntegrate(out)
+			}
 		}
-		for _, out := range results {
-			printIntegrate(out)
+		if failed {
+			return 1
 		}
 		return 0
 	}
 	var slugPtr *string
-	if slug != "" {
-		slugPtr = &slug
+	if slugArg != "" {
+		slugPtr = &slugArg
 	}
 	out := integrate.IntegrateOne(p, slugPtr)
 	if asJSON {
-		_ = json.NewEncoder(os.Stdout).Encode(out.ToDict())
-		return 0
-	}
-	if !out.Empty {
+		if err := json.NewEncoder(os.Stdout).Encode(out.ToDict()); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+	} else if !out.Empty {
 		printIntegrate(out)
+	}
+	if out.Failed() {
+		return 1
 	}
 	return 0
 }
