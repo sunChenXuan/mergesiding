@@ -77,7 +77,7 @@ Usage:
   mergesiding status [--slug <slug>] [--json]
   mergesiding abort --slug <slug>
   mergesiding cleanup --slug <slug> (--remove-worktree and/or --delete-branch)
-  mergesiding mcp   # MERGESIDING_MCP_ROLE=writer|scheduler`)
+  mergesiding mcp   # MERGESIDING_MCP_ROLE=writer|scheduler|full (unset=full)`)
 }
 
 func cmdStart(p paths.Paths, args []string) int {
