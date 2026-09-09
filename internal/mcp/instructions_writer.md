@@ -13,8 +13,8 @@ chat root and use absolute worktree paths + Shell working_directory.
 - **Start an isolated parallel task** → `mergesiding_start` (PRIMARY for new work)
 - **Task done and worktree clean** → `mergesiding_ready` (closes this task; do not keep editing that worktree)
 - **More changes after ready** → wait for integrate (or `mergesiding_abort`), then `mergesiding_start` a **new** slug
-- **Inspect progress / blocked / escalate** → `mergesiding_status` or `mergesiding_list`
-- **Abandon a task** → `mergesiding_abort`
+- **Inspect progress / blocked / escalate** → `mergesiding_status` (omit slug to list all tasks)
+- **Abandon a task** → `mergesiding_abort` (does not remove worktrees; use `mergesiding_cleanup`)
 - **Remove DONE/ABORTED git artifacts** → `mergesiding_cleanup` (needs explicit flags)
 - **Integrate / merge** → NOT available in writer profile; scheduler owns integrate
 

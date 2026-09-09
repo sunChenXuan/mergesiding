@@ -13,15 +13,23 @@ var instructionsWriter string
 //go:embed instructions_scheduler.md
 var instructionsScheduler string
 
+//go:embed instructions_full.md
+var instructionsFull string
+
 // Run starts the stdio MCP server for the role in MERGESIDING_MCP_ROLE.
 func Run() error {
 	role, err := RoleFromEnv()
 	if err != nil {
 		return err
 	}
-	instr := instructionsWriter
-	if role == RoleScheduler {
+	instr := instructionsFull
+	switch role {
+	case RoleWriter:
+		instr = instructionsWriter
+	case RoleScheduler:
 		instr = instructionsScheduler
+	case RoleFull:
+		instr = instructionsFull
 	}
 	s := server.NewMCPServer(
 		"mergesiding",
@@ -33,6 +41,8 @@ func Run() error {
 		registerWriterTools(s)
 	case RoleScheduler:
 		registerSchedulerTools(s)
+	case RoleFull:
+		registerFullTools(s)
 	default:
 		return fmt.Errorf("unsupported role %q", role)
 	}

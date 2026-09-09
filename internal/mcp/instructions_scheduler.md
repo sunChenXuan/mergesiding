@@ -6,15 +6,15 @@ under an exclusive lock. Writers own start/ready; you own integrate.
 ## Tool selection by intent
 
 - **Integrate next ready task** → `mergesiding_integrate` (PRIMARY)
-- **Drain queue until empty or stop** → `mergesiding_integrate_all`
+- **Drain queue until empty or stop** → `mergesiding_integrate` with `all=true`
 - **Resume BLOCKED_PARTIAL / specific slug** → `mergesiding_integrate` with slug
-- **Inspect / recovery** → `mergesiding_status` / `mergesiding_list`
-- **Abandon** → `mergesiding_abort`
+- **Inspect / recovery** → `mergesiding_status` (omit slug to list all tasks)
+- **Abandon** → `mergesiding_abort` (does not remove worktrees; use `mergesiding_cleanup`)
 - **Cleanup DONE/ABORTED** → `mergesiding_cleanup`
 
 ## Common chains
 
-- After writer ready: `mergesiding_integrate` or `mergesiding_integrate_all`
+- After writer ready: `mergesiding_integrate` or `mergesiding_integrate` with `all=true`
 - On awaiting_writer / blocked: stop; wait for writer ready; integrate again
 - On blocked_partial: `mergesiding_integrate` with that slug (do not rely on queue alone)
 

@@ -47,14 +47,20 @@ func registerWriterTools(s *server.MCPServer) {
 
 func registerSchedulerTools(s *server.MCPServer) {
 	registerSharedTools(s)
-	s.AddTool(mcp.NewTool("mergesiding_integrate",
-		mcp.WithDescription("PRIMARY — integrate one ready queue head, or resume a slug (including blocked_partial)."),
-		mcp.WithString("slug", mcp.Description("Optional slug; omit to peek ready queue")),
-	), handleIntegrate)
+	registerIntegrateTool(s)
+}
 
-	s.AddTool(mcp.NewTool("mergesiding_integrate_all",
-		mcp.WithDescription("Loop integrate until queue empty or stop_batch (awaiting_writer/blocked/blocked_partial/lock)."),
-	), handleIntegrateAll)
+func registerFullTools(s *server.MCPServer) {
+	registerWriterTools(s)
+	registerIntegrateTool(s)
+}
+
+func registerIntegrateTool(s *server.MCPServer) {
+	s.AddTool(mcp.NewTool("mergesiding_integrate",
+		mcp.WithDescription("PRIMARY — integrate one ready queue head, or resume a slug (including blocked_partial). Set all=true to drain the ready queue until empty or stop_batch."),
+		mcp.WithString("slug", mcp.Description("Optional slug; omit to peek ready queue")),
+		mcp.WithBoolean("all", mcp.Description("If true, loop integrate like former integrate_all (ignore slug)")),
+	), handleIntegrate)
 }
 
 func registerSharedTools(s *server.MCPServer) {
@@ -63,15 +69,9 @@ func registerSharedTools(s *server.MCPServer) {
 		mcp.WithString("slug", mcp.Description("Optional task slug for detail")),
 	), handleStatus)
 
-	s.AddTool(mcp.NewTool("mergesiding_list",
-		mcp.WithDescription("Alias of status without slug — list all tasks."),
-	), handleList)
-
 	s.AddTool(mcp.NewTool("mergesiding_abort",
-		mcp.WithDescription("Abandon a task (active/ready/awaiting_writer/blocked/blocked_partial). Optional git cleanup flags."),
+		mcp.WithDescription("Abandon a task (active/ready/awaiting_writer/blocked/blocked_partial). Does not remove worktrees or branches; use mergesiding_cleanup."),
 		mcp.WithString("slug", mcp.Required(), mcp.Description("Task slug")),
-		mcp.WithBoolean("remove_worktree", mcp.Description("Remove worktrees")),
-		mcp.WithBoolean("delete_branch", mcp.Description("Delete task branches")),
 	), handleAbort)
 
 	s.AddTool(mcp.NewTool("mergesiding_cleanup",
@@ -131,20 +131,9 @@ func handleStatus(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolRe
 	return jsonResult(payload)
 }
 
-func handleList(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	payload, err := status.Payload(paths.Default(), nil)
-	if err != nil {
-		return errResult(err)
-	}
-	return jsonResult(payload)
-}
-
 func handleAbort(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	args := req.GetArguments()
-	slug, _ := args["slug"].(string)
-	rw, _ := args["remove_worktree"].(bool)
-	db, _ := args["delete_branch"].(bool)
-	task, err := abort.Abort(paths.Default(), slug, rw, db)
+	slug, _ := req.GetArguments()["slug"].(string)
+	task, err := abort.Abort(paths.Default(), slug, false, false)
 	if err != nil {
 		return errResult(err)
 	}
@@ -164,19 +153,19 @@ func handleCleanup(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolR
 }
 
 func handleIntegrate(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	args := req.GetArguments()
+	if all, _ := args["all"].(bool); all {
+		results, summary := integrate.IntegrateAll(paths.Default())
+		mapped := make([]map[string]any, 0, len(results))
+		for _, r := range results {
+			mapped = append(mapped, r.ToDict())
+		}
+		return jsonResult(map[string]any{"results": mapped, "summary": summary})
+	}
 	var slugPtr *string
-	if v, ok := req.GetArguments()["slug"].(string); ok && v != "" {
+	if v, ok := args["slug"].(string); ok && v != "" {
 		slugPtr = &v
 	}
 	out := integrate.IntegrateOne(paths.Default(), slugPtr)
 	return jsonResult(out.ToDict())
-}
-
-func handleIntegrateAll(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	results, summary := integrate.IntegrateAll(paths.Default())
-	mapped := make([]map[string]any, 0, len(results))
-	for _, r := range results {
-		mapped = append(mapped, r.ToDict())
-	}
-	return jsonResult(map[string]any{"results": mapped, "summary": summary})
 }
