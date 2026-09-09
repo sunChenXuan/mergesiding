@@ -36,7 +36,10 @@ func TestFullHasStartReadyIntegrate(t *testing.T) {
 			t.Fatalf("full must not expose removed tool %s", n)
 		}
 	}
-	for _, need := range []string{"mergesiding_start", "mergesiding_ready", "mergesiding_integrate"} {
+	for _, need := range []string{
+		"mergesiding_start", "mergesiding_ready", "mergesiding_integrate",
+		"mergesiding_status", "mergesiding_abort", "mergesiding_cleanup",
+	} {
 		if !have[need] {
 			t.Fatalf("full missing %s", need)
 		}
@@ -84,5 +87,13 @@ func TestInvalidRoleError(t *testing.T) {
 	t.Setenv(EnvRoleLegacy, "")
 	if _, err := RoleFromEnv(); err == nil {
 		t.Fatal("expected error")
+	}
+}
+
+func TestRoleFromEnvRejectsAll(t *testing.T) {
+	t.Setenv(EnvRole, "all")
+	t.Setenv(EnvRoleLegacy, "")
+	if _, err := RoleFromEnv(); err == nil {
+		t.Fatal("expected error for role all")
 	}
 }
