@@ -2,7 +2,7 @@
 
 Date: 2026-09-09  
 Status: approved for implementation planning  
-Scope: remove redundant CLI/MCP surface; clarify abort vs cleanup; add MCP `all` role; align docs
+Scope: remove redundant CLI/MCP surface; clarify abort vs cleanup; add MCP `full` role (default when unset); align docs
 
 ## Goal
 
@@ -12,12 +12,12 @@ Happy path stays: `start → ready → integrate`.
 
 ## Non-goals
 
-- Collapsing MCP to a single mandatory role (writer/scheduler/`all` all remain valid)
+- Collapsing MCP to a single mandatory role (writer/scheduler/`full` all remain valid)
 - Changing the task status machine
 - Multi-repo, `writer_id`, `brief`, resume hooks, verify, or worktree layout
 - Auto-cleanup after successful integrate
 - Building a Cursor Plugin / new install UX
-- Marketing or “recommended default” framing for any MCP role
+- Marketing or “recommended default” framing for any MCP role (default-when-unset is a behavior fact, not a pitch)
 
 ## Decisions (locked)
 
@@ -26,18 +26,21 @@ Happy path stays: `start → ready → integrate`.
 | Compatibility | Breaking OK — delete redundant surface, no soft aliases |
 | abort vs cleanup | Split: abort = status only; cleanup = disk only |
 | After `done` | Manual `cleanup` still required |
-| MCP roles | Keep `writer` / `scheduler`; add `all` (full tool set) |
+| MCP roles | Keep `writer` / `scheduler`; add `full` (full tool set) |
+| Role default | If `MERGESIDING_MCP_ROLE` and legacy env are both unset/empty → `full` |
+| Role alias | Explicit `all` is accepted as an alias of `full` (same tool set) |
+| Role naming | Prefer `full` over `all` as the canonical name to avoid clashing with integrate tool arg `all` |
 | Role docs | Document each role’s permissions only — do not push a preferred role |
 | Docs | Update README, MCP docs, Skill, and snippet together |
 
 ## Approach
 
-Minimal breaking slim-down (Approach 1 from brainstorm), plus `all` role:
+Minimal breaking slim-down (Approach 1 from brainstorm), plus `full` role:
 
 1. Remove `list` / `mergesiding_list` (use `status` with no slug).
 2. Remove `mergesiding_integrate_all`; add optional `all` on `mergesiding_integrate` (CLI keeps `integrate --all`).
 3. Strip cleanup flags from `abort`; only `cleanup` removes worktrees/branches.
-4. Accept `MERGESIDING_MCP_ROLE=all` with the union of writer + scheduler tools.
+4. Accept `MERGESIDING_MCP_ROLE=full` (and alias `all`) with the union of writer + scheduler tools; empty/unset → `full`.
 5. Realign user-facing docs to the slim command narrative; role sections list permissions only.
 
 ## Command / MCP surface
@@ -48,16 +51,20 @@ Minimal breaking slim-down (Approach 1 from brainstorm), plus `all` role:
 
 ### Role matrix after change
 
-| Command / tool | Writer | Scheduler | All |
-|----------------|--------|-----------|-----|
+| Command / tool | Writer | Scheduler | Full |
+|----------------|--------|-----------|------|
 | `start` / `mergesiding_start` | yes | no | yes |
 | `ready` / `mergesiding_ready` | yes | no | yes |
 | `status` / `mergesiding_status` | yes | yes | yes |
 | `abort` / `mergesiding_abort` | yes | yes | yes |
 | `cleanup` / `mergesiding_cleanup` | yes | yes | yes |
-| `integrate` / `mergesiding_integrate` | no | yes (`all` optional) | yes (`all` optional) |
+| `integrate` / `mergesiding_integrate` | no | yes (`all` arg optional) | yes (`all` arg optional) |
 
-`MERGESIDING_MCP_ROLE` (and legacy `AGENT_GIT_MCP_ROLE`) accepts: `writer` | `scheduler` | `all`.
+`MERGESIDING_MCP_ROLE` (and legacy `AGENT_GIT_MCP_ROLE`):
+
+- unset / empty → `full`
+- `writer` | `scheduler` | `full`
+- `all` → treated as `full` (alias)
 
 ### Removals
 
@@ -68,18 +75,20 @@ Minimal breaking slim-down (Approach 1 from brainstorm), plus `all` role:
 ### Adjustments
 
 - `status` with no `--slug` / no `slug` argument lists all tasks (former `list` behavior).
-- MCP `mergesiding_integrate` gains optional boolean `all` (`true` = former integrate_all). Name clash note: tool argument `all` ≠ role name `all`.
+- MCP `mergesiding_integrate` gains optional boolean `all` (`true` = former integrate_all). This is a **tool argument**, not the role name (`full`).
 - CLI `integrate --all` remains; mutually exclusive with `--slug` (unchanged).
 
 ### Role semantics (for docs — permissions only)
 
 - **writer** — start, ready, status, abort, cleanup. No integrate.
-- **scheduler** — status, abort, cleanup, integrate (optional batch via `all` arg). No start/ready.
-- **all** — every MCP tool above (start, ready, status, abort, cleanup, integrate).
+- **scheduler** — status, abort, cleanup, integrate (optional batch via tool arg `all`). No start/ready.
+- **full** — every MCP tool above (start, ready, status, abort, cleanup, integrate). Same when role env is unset. Alias value: `all`.
 
-Do **not** frame docs as “prefer all” or “prefer split.” Worktree isolation addresses concurrent file edits; role split only controls which tools an MCP client can call. Serial integrate remains enforced by the integrate lock/queue regardless of role.
+Do **not** frame docs as “prefer full” or “prefer split.” State factually that unset role env means `full`. Worktree isolation addresses concurrent file edits; role split only controls which tools an MCP client can call. Serial integrate remains enforced by the integrate lock/queue regardless of role.
 
 CLI is unchanged: one binary exposes all subcommands; MCP roles do not apply to CLI.
+
+MCP server instructions: writer and scheduler keep role-specific instruction embeds; `full` uses a combined instructions file (or writer∪scheduler guidance without implying a preferred setup).
 
 ## abort / cleanup contract
 
@@ -117,7 +126,7 @@ Shared narrative:
 - Daily: `start → ready → integrate`
 - Side paths: `status`, `abort`, `cleanup`
 - Explicit: abort does not touch disk; after `done`/`aborted`, cleanup is manual
-- MCP: show config examples for roles as needed; for each role, **only state which tools it has** — no “recommended for most users” copy for `all` or for the split
+- MCP: for each role, **only state which tools it has**; mention unset → `full` as a factual default; no “recommended for most users” pitch
 
 Out of doc scope for this change: large status-machine diagrams, Plugin packaging.
 
@@ -127,22 +136,23 @@ Out of doc scope for this change: large status-machine diagrams, Plugin packagin
 2. MCP `mergesiding_list` removed → use `mergesiding_status`
 3. MCP `mergesiding_integrate_all` removed → `mergesiding_integrate` with `all: true`
 4. `abort` no longer accepts cleanup flags (CLI errors if passed; MCP schema drops them) — use `cleanup` after abort
-5. Additive (non-breaking): `MERGESIDING_MCP_ROLE=all` accepted
+5. Additive / behavior change: unset `MERGESIDING_MCP_ROLE` now defaults to `full` (previously errored); `full` and alias `all` accepted
 
 ## Testing
 
 - Role / `ToolNames` tests: no `list` / `integrate_all`; integrate supports `all` arg
-- `RoleAll` exposes start+ready+integrate; writer still excludes integrate; scheduler still lacks start/ready
-- `RoleFromEnv` accepts `all`; invalid role still errors
+- `RoleFull` exposes start+ready+integrate; writer still excludes integrate; scheduler still lacks start/ready
+- `RoleFromEnv`: empty → `full`; `full` and `all` → `full`; invalid role still errors
 - abort: no cleanup side effects; passing old flags fails on CLI
 - cleanup: still works for `done` / `aborted` with flags
 - CLI help and parsing: no `list`; `integrate --all` still works
-- Docs: no recommendation framing for a preferred MCP role; permissions matrix accurate; no recommended `list` / `integrate_all` / “abort removes worktree”
+- Docs: permissions matrix accurate; unset→full stated as fact; no preferred-role pitch; no recommended `list` / `integrate_all` / “abort removes worktree”
 
 ## Success criteria
 
-- Writer / scheduler / all tool lists match the matrix above
+- Writer / scheduler / full tool lists match the matrix above
+- Unset role env starts MCP with full tools
 - abort cannot delete git artifacts; cleanup remains the only disk path
 - EN/ZH README + MCP docs + Skill + snippet describe the same command flow
-- MCP docs state role permissions without promoting a default role
+- MCP docs state role permissions without promoting a preferred role
 - Existing tests updated; suite green
