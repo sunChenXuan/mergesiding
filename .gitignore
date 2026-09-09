@@ -1,0 +1,21 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.venv/
+venv/
+
+.superpowers/
+.worktrees/
+scripts/
+
+# Go
+/mergesiding
+/mergesiding.exe
+*.exe
+*.test
+/bin/
+*.out
