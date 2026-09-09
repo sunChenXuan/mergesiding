@@ -43,6 +43,25 @@ Set `command` to the full path. On Windows, forward slashes avoid escape issues:
 
 macOS/Linux example: `/Users/you/bin/mergesiding`.
 
+## Cursor: install the companion Skill (recommended)
+
+**MCP ≠ Skill.** mergesiding MCP only exposes tools (`start` / `ready` / `status` / `abort` / `cleanup`; scheduler also has `integrate`). Cursor’s `/mergesiding` comes from a **Skill** (`SKILL.md`), not from MCP. Installing `mcp.json` alone does **not** add `/mergesiding`.
+
+Skill/Rule teach the workflow: don’t edit the human base checkout, commit only in the worktree, after `ready` let a human/scheduler `integrate`, and in Cursor never call `move_agent_to_root` on a linked worktree.
+
+Contrast: products like Superpowers ship as a Cursor Plugin with `"skills": "./skills/"` in `plugin.json`, so skills appear after install. mergesiding today is binary + MCP — install the Skill/Rule separately (a bundled Cursor Plugin is a possible future; not shipping yet).
+
+After writer/scheduler MCP works, ask your AI (or copy yourself):
+
+```text
+skills/mergesiding/SKILL.md  →  ~/.cursor/skills/mergesiding/SKILL.md
+```
+
+Windows: `%USERPROFILE%\.cursor\skills\mergesiding\SKILL.md`.  
+Fallback: paste [cursor-rule-snippet.md](../cursor-rule-snippet.md) into Cursor User Rules.
+
+You can still call MCP tools with natural language without a Skill; for multi-agent parallel work, install the Skill.
+
 ## Optional environment variables
 
 - `MERGESIDING_MCP_ROLE` — `writer` or `scheduler` (required for `mcp`)
@@ -57,3 +76,4 @@ Legacy `AGENT_GIT_*` names still work.
 - Missing role → server won’t start; set `MERGESIDING_MCP_ROLE`
 - Writer has no integrate tools → intentional
 - Unexpected task folder location → [worktree-layout.md](worktree-layout.md)
+- Expected `/mergesiding` after MCP-only setup → install the companion Skill above

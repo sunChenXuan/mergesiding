@@ -53,6 +53,8 @@ Exact config file location depends on your host (for example Cursor’s MCP sett
 - **writer** — start tasks, mark ready, status, abort, cleanup (no merge)  
 - **scheduler** — integrate / integrate_all, plus status / abort / cleanup  
 
+In Cursor, MCP alone does **not** add `/mergesiding` — that comes from a Skill. After MCP works, copy `skills/mergesiding/SKILL.md` to `~/.cursor/skills/mergesiding/` (or paste [cursor-rule-snippet.md](cursor-rule-snippet.md) into User Rules). Details: [docs/mcp.md § Cursor companion Skill](docs/mcp.md#cursor-install-the-companion-skill-recommended).
+
 ## Command line
 
 ```text

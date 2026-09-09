@@ -52,6 +52,8 @@ English: [README.md](README.md)
 - **writer**：开任务、标记做完、看状态、放弃、清理（不能合并）  
 - **scheduler**：合并（integrate），以及状态 / 放弃 / 清理  
 
+在 Cursor 里，只装 MCP **不会**出现 `/mergesiding`——那来自 Skill。MCP 配好后，把 `skills/mergesiding/SKILL.md` 复制到 `~/.cursor/skills/mergesiding/`（或把 [cursor-rule-snippet.md](cursor-rule-snippet.md) 写入用户规则）。说明：[docs/mcp.zh-CN.md § 配套 Skill](docs/mcp.zh-CN.md#cursor建议同时安装配套-skill)。
+
 ## 命令行怎么用
 
 ```text

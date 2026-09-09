@@ -1,3 +1,5 @@
+<!-- 简版 rule；完整版见 skills/mergesiding/SKILL.md -->
+
 # mergesiding agent notes (optional)
 
 Works with CLI or any MCP host (`mergesiding-writer` / `mergesiding-scheduler`).
