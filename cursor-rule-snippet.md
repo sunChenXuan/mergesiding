@@ -11,3 +11,4 @@ MCP roles differ by tool access (writer / scheduler / full) — see [docs/mcp.md
 - `abort` does not remove worktrees; use `cleanup` after `done` or `aborted`.
 - Writers must not merge; scheduler or full role owns `integrate`.
 - If using Cursor: do not call `move_agent_to_root` / `move_agent_to_cloned_root` for linked worktrees.
+- If using codegraph: default `projectPath` = human base; do not `codegraph init -i` on every start — [docs/codegraph.md](docs/codegraph.md).

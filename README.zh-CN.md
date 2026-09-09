@@ -13,6 +13,7 @@ English: [README.md](README.md)
 
 - MCP 怎么配：[docs/mcp.zh-CN.md](docs/mcp.zh-CN.md)
 - 任务目录放哪：[docs/worktree-layout.zh-CN.md](docs/worktree-layout.zh-CN.md)
+- 与 codegraph 配合（可选）：[docs/codegraph.zh-CN.md](docs/codegraph.zh-CN.md)
 
 ## 怎么安装
 
@@ -113,6 +114,8 @@ projects/
     my-app/
       foo/                ← start 建出来的任务目录
 ```
+
+更细的布局说明：[docs/worktree-layout.zh-CN.md](docs/worktree-layout.zh-CN.md)。同会话用 codegraph 时见 [docs/codegraph.zh-CN.md](docs/codegraph.zh-CN.md)。
 
 ## 可选配置
 

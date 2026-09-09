@@ -111,4 +111,5 @@ Legacy `AGENT_GIT_*` names still work.
 - Invalid role → server won’t start; use `writer`, `scheduler`, or `full` only
 - Writer has no integrate tools → intentional (use scheduler or full for merge)
 - Unexpected task folder location → [worktree-layout.md](worktree-layout.md)
+- Using codegraph while editing a mergesiding worktree → [codegraph.md](codegraph.md)
 - Expected `/mergesiding` after MCP-only setup (Cursor example) → install the companion Skill above

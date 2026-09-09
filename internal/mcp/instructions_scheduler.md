@@ -23,6 +23,7 @@ under an exclusive lock. Writers own start/ready; you own integrate.
 - Do not ask writers to merge into integration themselves
 - Do not skip escalate files when status is awaiting_writer / blocked
 - Do not auto-rollback already-merged repos on blocked_partial
+- codegraph pairing is writer-side; if relevant, see docs/codegraph.md (do not init on every start)
 
 ## Limitations
 

@@ -38,7 +38,16 @@ MCP roles differ by **tool access** only (see [docs/mcp.md](../../docs/mcp.md)):
 12. Do not use `git checkout --ours/--theirs` unless the brief explicitly requires it.
 13. If using Cursor: never call `move_agent_to_root` / `move_agent_to_cloned_root` for linked worktrees.
 
+## Codegraph + worktrees
+
+Optional — only if codegraph MCP is in use. Full notes: [docs/codegraph.md](../../docs/codegraph.md) / [docs/codegraph.zh-CN.md](../../docs/codegraph.zh-CN.md).
+
+1. Compatible in the same session; not mutually exclusive.
+2. **Default:** explore with `projectPath=<human base checkout abs path>` (base already indexed). Do **not** run `codegraph init -i` after every `start`.
+3. **Only when** the graph must follow **unmerged worktree edits** (user asks / large change): `codegraph init -i` in that worktree, then `projectPath=<worktree>`.
+4. **Never** copy `.codegraph/` between trees; **never** put one index above multiple worktrees to “cover” them.
+
 ## Docs
 
-- EN: README + [docs/mcp.md](../../docs/mcp.md) + docs/worktree-layout.md
+- EN: README + [docs/mcp.md](../../docs/mcp.md) + [docs/worktree-layout.md](../../docs/worktree-layout.md) + [docs/codegraph.md](../../docs/codegraph.md)
 - ZH: README.zh-CN.md + docs/*.zh-CN.md

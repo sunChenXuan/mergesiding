@@ -7,7 +7,7 @@ Ways to use it:
 1. **Command line** — works anywhere you have git  
 2. **MCP** — any client that speaks the [Model Context Protocol](https://modelcontextprotocol.io/) (Cursor, Claude Desktop, and other MCP hosts)
 
-中文：[README.zh-CN.md](README.zh-CN.md) · [MCP 配置](docs/mcp.zh-CN.md) · [任务目录放哪](docs/worktree-layout.zh-CN.md)
+中文：[README.zh-CN.md](README.zh-CN.md) · [MCP 配置](docs/mcp.zh-CN.md) · [任务目录放哪](docs/worktree-layout.zh-CN.md) · [与 codegraph 配合](docs/codegraph.zh-CN.md)
 
 ## Install
 
@@ -116,6 +116,8 @@ projects/
 ```
 
 More detail: [docs/worktree-layout.md](docs/worktree-layout.md)
+
+Using codegraph in the same session (optional): [docs/codegraph.md](docs/codegraph.md).
 
 ## Optional project settings
 

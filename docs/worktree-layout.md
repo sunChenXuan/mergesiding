@@ -39,3 +39,7 @@ Add that path to `.gitignore`, or git will see a mess of nested checkouts.
 ## What to edit
 
 Only the folder `start` printed, on branch `task/<name>`. Don’t do the parallel task work in your everyday clone.
+
+## codegraph (optional)
+
+Task worktrees do not get a codegraph index automatically. If you use codegraph MCP in the same session, see [codegraph.md](codegraph.md) (default: `projectPath` = human base checkout; do not `codegraph init -i` on every `start`).

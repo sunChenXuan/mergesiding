@@ -39,3 +39,7 @@ projects/
 ## 改哪里
 
 只改 `start` 打印出来的那个目录，分支是 `task/<名字>`。并行任务别动你日常打开的那份克隆。
+
+## codegraph（可选）
+
+任务 worktree **不会**自动带 codegraph 索引。同会话若用 codegraph MCP，见 [codegraph.zh-CN.md](codegraph.zh-CN.md)（默认：`projectPath` = 人的 base 仓库；不要每次 `start` 都跑 `codegraph init -i`）。

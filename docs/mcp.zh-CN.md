@@ -109,4 +109,5 @@ Windows：`%USERPROFILE%\.cursor\skills\mergesiding\SKILL.md`。
 - 无效角色 → 起不来；只能用 `writer`、`scheduler` 或 `full`
 - writer 看不到合并工具 → 正常（合并用 scheduler 或 full）
 - 任务目录位置不对 → [worktree-layout.zh-CN.md](worktree-layout.zh-CN.md)
+- 在 mergesiding worktree 里同时用 codegraph → [codegraph.zh-CN.md](codegraph.zh-CN.md)
 - 只装了 MCP 却没有 `/mergesiding`（Cursor 示例）→ 按上文安装配套 Skill

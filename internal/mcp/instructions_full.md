@@ -33,6 +33,7 @@ chat root and use absolute worktree paths + Shell working_directory.
 - Do not use `git checkout --ours/--theirs` unless the brief requires it
 - Do not call workspace root-switch tools for linked worktrees
 - Do not expect `mergesiding_abort` to remove worktrees — use `mergesiding_cleanup`
+- If using codegraph while editing a worktree: default `projectPath` = human base checkout; do not `codegraph init -i` on every start (see docs/codegraph.md)
 
 ## Limitations
 
