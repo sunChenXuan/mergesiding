@@ -4,7 +4,7 @@
 
 **Goal:** Remove redundant `list` / `integrate_all` surface, split abort vs cleanup, add MCP role `full` (default when role env unset; no `all` role alias), and align EN/ZH docs + Skill + snippet to the same permissions-only narrative.
 
-**Architecture:** Keep CLI and dual-ish MCP registration; extend `Role` with `full`, default `RoleFromEnv` to `full` when unset, register writer‚à™scheduler tools for `full`. Slim MCP tool list and abort API so disk cleanup only goes through `cleanup`. Docs state role permissions without pitching a preferred role.
+**Architecture:** Keep CLI and dual-ish MCP registration; extend `Role` with `full`, default `RoleFromEnv` to `full` when unset, register writer?scheduler tools for `full`. Slim MCP tool list and abort API so disk cleanup only goes through `cleanup`. Docs state role permissions without pitching a preferred role.
 
 **Tech Stack:** Go 1.x, mark3labs/mcp-go, existing `go test ./...`, Markdown docs under `docs/` and `skills/`.
 
@@ -12,9 +12,9 @@
 
 - Spec: `docs/superpowers/specs/2026-09-09-command-surface-slim-design.md`
 - Breaking OK: delete `list`, `mergesiding_list`, `mergesiding_integrate_all`; abort rejects cleanup flags
-- Canonical full role name: `full`; unset/empty role env ‚Ü?`full`; value `all` aliases to `full`
+- Canonical full role name: `full`; unset/empty role env ? `full` (no `all` role alias; value `all` is invalid)
 - Integrate tool boolean argument remains named `all` (not the role)
-- Docs: permissions only ‚Ä?no ‚Äúprefer full/split‚Ä?marketing copy; stating unset‚Üí`full` as fact is OK
+- Docs: permissions only ù?no ùprefer full/splitù?marketing copy; stating unset?`full` as fact is OK
 - Do not change status machine, multi-repo, verify, worktree layout, or auto-cleanup after integrate
 - Method-level comments on new exported funcs/consts per project rules
 
@@ -27,7 +27,7 @@
 | `internal/mcp/role.go` | Role enum, `RoleFromEnv`, `ToolNames` |
 | `internal/mcp/role_test.go` | Role/default/tool-list tests |
 | `internal/mcp/tools.go` | MCP tool registration + handlers |
-| `internal/mcp/server.go` | Role ‚Ü?register + instructions |
+| `internal/mcp/server.go` | Role ù?register + instructions |
 | `internal/mcp/instructions_*.md` | Host instructions per role |
 | `internal/abort/abort.go` | Abort without cleanup flags |
 | `internal/abort/abort_test.go` | Abort unit tests (new) |
@@ -43,7 +43,7 @@
 - Modify: `internal/mcp/role_test.go`
 
 **Interfaces:**
-- Produces: `RoleFull Role = "full"`; `RoleFromEnv() (Role, error)` returns `RoleFull` when both env vars empty; `"all"` maps to `RoleFull`; `ToolNames` has no `mergesiding_list` / `mergesiding_integrate_all`; `ToolNames(RoleFull)` = writer tools without list + `mergesiding_integrate`
+- Produces: `RoleFull Role = "full"`; `RoleFromEnv() (Role, error)` returns `RoleFull` when both env vars empty; `"all"` is rejected; `ToolNames` has no `mergesiding_list` / `mergesiding_integrate_all`; `ToolNames(RoleFull)` = writer tools without list + `mergesiding_integrate`
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -228,7 +228,7 @@ func ToolNames(role Role) []string {
 
 Run: `go test ./internal/mcp/ -count=1`
 
-Expected: PASS for role tests (server/tools may still compile; if tools.go still references old names, fix only in later tasks ‚Ä?role_test should pass)
+Expected: PASS for role tests (server/tools may still compile; if tools.go still references old names, fix only in later tasks ù?role_test should pass)
 
 - [ ] **Step 5: Commit**
 
@@ -256,13 +256,13 @@ git commit -m "Add MCP full role (default when unset) and slim ToolNames."
 
 In `registerWriterTools`: keep start/ready; call `registerSharedTools` (shared must NOT register list).
 
-In `registerSharedTools`: only status, abort, cleanup ‚Ä?delete `mergesiding_list` tool and `handleList`.
+In `registerSharedTools`: only status, abort, cleanup ù?delete `mergesiding_list` tool and `handleList`.
 
 In `registerSchedulerTools`: shared + integrate with optional `all`:
 
 ```go
 s.AddTool(mcp.NewTool("mergesiding_integrate",
-	mcp.WithDescription("PRIMARY ‚Ä?integrate one ready queue head, or resume a slug (including blocked_partial). Set all=true to drain the ready queue until empty or stop_batch."),
+	mcp.WithDescription("PRIMARY ù?integrate one ready queue head, or resume a slug (including blocked_partial). Set all=true to drain the ready queue until empty or stop_batch."),
 	mcp.WithString("slug", mcp.Description("Optional slug; omit to peek ready queue")),
 	mcp.WithBoolean("all", mcp.Description("If true, loop integrate like former integrate_all (ignore slug)")),
 ), handleIntegrate)
@@ -292,7 +292,7 @@ func handleIntegrate(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 }
 ```
 
-Update `handleAbort` ‚Ä?stop reading cleanup booleans; call `abort.Abort(paths.Default(), slug)` once Task 3 changes the signature. **For this task only**, if Abort still has 4 params, pass `false, false` temporarily OR do Task 3 first in the same session before compiling ‚Ä?prefer completing Task 3 abort signature before finishing this step‚Äôs compile.
+Update `handleAbort` ù?stop reading cleanup booleans; call `abort.Abort(paths.Default(), slug)` once Task 3 changes the signature. **For this task only**, if Abort still has 4 params, pass `false, false` temporarily OR do Task 3 first in the same session before compiling ù?prefer completing Task 3 abort signature before finishing this stepùs compile.
 
 Abort tool schema: remove `remove_worktree` / `delete_branch` properties.
 
@@ -303,7 +303,7 @@ func registerFullTools(s *server.MCPServer) {
 	registerWriterTools(s)
 	// Writer already registered shared; add integrate only once.
 	s.AddTool(mcp.NewTool("mergesiding_integrate",
-		mcp.WithDescription("PRIMARY ‚Ä?integrate one ready queue head, or resume a slug (including blocked_partial). Set all=true to drain the ready queue until empty or stop_batch."),
+		mcp.WithDescription("PRIMARY ù?integrate one ready queue head, or resume a slug (including blocked_partial). Set all=true to drain the ready queue until empty or stop_batch."),
 		mcp.WithString("slug", mcp.Description("Optional slug; omit to peek ready queue")),
 		mcp.WithBoolean("all", mcp.Description("If true, loop integrate like former integrate_all (ignore slug)")),
 	), handleIntegrate)
@@ -373,7 +373,7 @@ Update writer/scheduler instruction files: remove `mergesiding_list` and `merges
 
 Run: `go test ./internal/mcp/ -count=1`
 
-Expected: PASS (may fail until Task 3 if Abort signature already changed ‚Ä?order Task 3 next if compile errors)
+Expected: PASS (may fail until Task 3 if Abort signature already changed ù?order Task 3 next if compile errors)
 
 - [ ] **Step 5: Commit**
 
@@ -393,11 +393,11 @@ git commit -m "Slim MCP tools; register full role; fold integrate_all into all f
 - Modify: `internal/mcp/tools.go` (`handleAbort` call site) if still using old signature
 
 **Interfaces:**
-- Produces: `func Abort(p paths.Paths, taskSlug string) (*models.TaskRecord, error)` ‚Ä?no cleanup params; does not call `cleanup.CleanupTask`
+- Produces: `func Abort(p paths.Paths, taskSlug string) (*models.TaskRecord, error)` ù?no cleanup params; does not call `cleanup.CleanupTask`
 
 - [ ] **Step 1: Write failing abort tests**
 
-`internal/abort/abort_test.go` ‚Ä?use a temp MERGESIDING_HOME / store pattern from existing `store` or `start` tests if available. Minimal approach:
+`internal/abort/abort_test.go` ù?use a temp MERGESIDING_HOME / store pattern from existing `store` or `start` tests if available. Minimal approach:
 
 ```go
 package abort_test
@@ -415,7 +415,7 @@ import (
 // constructing paths.Paths with custom Home; otherwise follow store_test patterns.
 ```
 
-Inspect `internal/store/store_test.go` and `internal/paths/paths.go` for how tests set home. Mirror that: create an `active` task JSON, call `Abort`, assert status `aborted`, assert worktree paths untouched (no need to create real git if Abort no longer calls cleanup ‚Ä?just assert no error and status).
+Inspect `internal/store/store_test.go` and `internal/paths/paths.go` for how tests set home. Mirror that: create an `active` task JSON, call `Abort`, assert status `aborted`, assert worktree paths untouched (no need to create real git if Abort no longer calls cleanup ù?just assert no error and status).
 
 Also add a CLI-level check in a small test or manual step: if no CLI test harness exists, add table-driven logic in `cmdAbort` and verify via `go test` only on abort package; then manually run CLI in Step 4.
 
@@ -431,7 +431,7 @@ func TestAbortSetsAbortedWithoutCleanupArgs(t *testing.T) {
 
 Copy temp-home setup from `internal/store/store_test.go`.
 
-- [ ] **Step 2: Run test ‚Ä?expect fail if signature still has cleanup or cleanup still invoked**
+- [ ] **Step 2: Run test ù?expect fail if signature still has cleanup or cleanup still invoked**
 
 Run: `go test ./internal/abort/ -count=1`
 
@@ -449,7 +449,7 @@ func Abort(p paths.Paths, taskSlug string) (*models.TaskRecord, error) {
 
 Update all callers (`cli.cmdAbort`, `mcp.handleAbort`) to `abort.Abort(p, slug)`.
 
-- [ ] **Step 4: CLI ‚Ä?reject old flags; drop list**
+- [ ] **Step 4: CLI ù?reject old flags; drop list**
 
 In `Execute` switch: change `case "status", "list":` to `case "status":` only; remove the `if cmd == "list"` branch.
 
@@ -468,7 +468,7 @@ func cmdAbort(p paths.Paths, args []string) int {
 }
 ```
 
-Update `printHelp` ‚Ä?remove `list` line; abort line without cleanup flags.
+Update `printHelp` ù?remove `list` line; abort line without cleanup flags.
 
 - [ ] **Step 5: Run tests**
 
@@ -482,7 +482,7 @@ Manual smoke (optional but recommended):
 go run ./cmd/mergesiding abort --slug x --remove-worktree
 ```
 
-Expected: exit 2 and the stderr message (slug may also fail load ‚Ä?flag check should run first)
+Expected: exit 2 and the stderr message (slug may also fail load ù?flag check should run first)
 
 - [ ] **Step 6: Commit**
 
@@ -510,11 +510,11 @@ For each role section, list tools only:
 
 - writer: start, ready, status, abort, cleanup
 - scheduler: status, abort, cleanup, integrate (`all` arg for batch)
-- full: all of the above; note unset/empty `MERGESIDING_MCP_ROLE` ‚Ü?full; `all` accepted as alias of `full`
+- full: all of the above; note unset/empty `MERGESIDING_MCP_ROLE` ? `full`
 
 Remove integrate_all / list mentions. State abort does not clean disk; cleanup after done/aborted.
 
-Config examples may show writer+scheduler and/or a single server without role env / with `full` ‚Ä?without ‚Äúrecommended‚Ä?wording.
+Config examples may show writer+scheduler and/or a single server without role env / with `full` ù?without ùrecommendedù?wording.
 
 - [ ] **Step 2: Update README EN + ZH**
 
@@ -524,7 +524,7 @@ Same tool narrative; command examples without `list`; abort without cleanup flag
 
 Skill: MCP roles differ by tool access (link mcp docs); writer has no integrate; full has all tools; abort then optional cleanup; no list/integrate_all.
 
-Snippet: short pointer to Skill + `start ‚Ü?ready ‚Ü?integrate` + one line on MCP role tool access ‚Ü?`docs/mcp.md`.
+Snippet: short pointer to Skill + `start ù?ready ù?integrate` + one line on MCP role tool access ù?`docs/mcp.md`.
 
 - [ ] **Step 4: Search verification**
 
@@ -534,7 +534,7 @@ Run (PowerShell):
 Select-String -Path README.md,README.zh-CN.md,docs\mcp.md,docs\mcp.zh-CN.md,skills\mergesiding\SKILL.md,cursor-rule-snippet.md,internal\mcp\instructions_*.md -Pattern "integrate_all|mergesiding_list|mergesiding list|abort.*remove-worktree|prefer full|recommended.*role" -CaseSensitive:$false
 ```
 
-Expected: no hits that recommend removed surface or preferred-role marketing (factual ‚Äúunset defaults to full‚Ä?is OK).
+Expected: no hits that recommend removed surface or preferred-role marketing (factual ùunset defaults to fullù?is OK).
 
 - [ ] **Step 5: Full test suite**
 
@@ -585,4 +585,4 @@ git commit -m "Add implementation plan for command surface slim-down."
 - No TBD placeholders in tasks
 - Integrate arg `all` vs role `full` distinguished throughout
 - `registerFullTools` must not double-register shared tools
-- Abort signature change coordinated between Tasks 2‚Ä? (implement Abort API before MCP compile finishes)
+- Abort signature change coordinated between Tasks 2ù? (implement Abort API before MCP compile finishes)
