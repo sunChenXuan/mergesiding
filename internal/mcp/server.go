@@ -28,8 +28,6 @@ func Run() error {
 		instr = instructionsWriter
 	case RoleScheduler:
 		instr = instructionsScheduler
-	case RoleFull:
-		instr = instructionsFull
 	}
 	s := server.NewMCPServer(
 		"mergesiding",

@@ -157,15 +157,35 @@ func handleIntegrate(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 	if all, _ := args["all"].(bool); all {
 		results, summary := integrate.IntegrateAll(paths.Default())
 		mapped := make([]map[string]any, 0, len(results))
+		failed := false
 		for _, r := range results {
+			if r.Failed() {
+				failed = true
+			}
 			mapped = append(mapped, r.ToDict())
 		}
-		return jsonResult(map[string]any{"results": mapped, "summary": summary})
+		payload := map[string]any{"results": mapped, "summary": summary}
+		if failed {
+			b, err := json.MarshalIndent(payload, "", "  ")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			// Match CLI: non-zero exit when any integrate outcome failed, but keep structured body.
+			return mcp.NewToolResultError(string(b)), nil
+		}
+		return jsonResult(payload)
 	}
 	var slugPtr *string
 	if v, ok := args["slug"].(string); ok && v != "" {
 		slugPtr = &v
 	}
 	out := integrate.IntegrateOne(paths.Default(), slugPtr)
+	if out.Failed() {
+		b, err := json.MarshalIndent(out.ToDict(), "", "  ")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+		return mcp.NewToolResultError(string(b)), nil
+	}
 	return jsonResult(out.ToDict())
 }
