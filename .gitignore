@@ -1,3 +1,4 @@
+# Python / packaging (local tooling)
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -8,9 +9,24 @@ build/
 .venv/
 venv/
 
+# Agent / local worktrees (do not commit)
 .superpowers/
 .worktrees/
+.agent-git-worktrees/
 scripts/
+
+# IDE / editor (machine-local)
+.cursor/
+.idea/
+*.swp
+*.swo
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Node (if present locally)
+node_modules/
 
 # Go
 /mergesiding
