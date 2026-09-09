@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Remove redundant `list` / `integrate_all` surface, split abort vs cleanup, add MCP role `full` (default when role env unset; alias `all`), and align EN/ZH docs + Skill + snippet to the same permissions-only narrative.
+**Goal:** Remove redundant `list` / `integrate_all` surface, split abort vs cleanup, add MCP role `full` (default when role env unset; no `all` role alias), and align EN/ZH docs + Skill + snippet to the same permissions-only narrative.
 
 **Architecture:** Keep CLI and dual-ish MCP registration; extend `Role` with `full`, default `RoleFromEnv` to `full` when unset, register writer‚à™scheduler tools for `full`. Slim MCP tool list and abort API so disk cleanup only goes through `cleanup`. Docs state role permissions without pitching a preferred role.
 
@@ -12,9 +12,9 @@
 
 - Spec: `docs/superpowers/specs/2026-09-09-command-surface-slim-design.md`
 - Breaking OK: delete `list`, `mergesiding_list`, `mergesiding_integrate_all`; abort rejects cleanup flags
-- Canonical full role name: `full`; unset/empty role env ‚Üí `full`; value `all` aliases to `full`
+- Canonical full role name: `full`; unset/empty role env ‚Ü?`full`; value `all` aliases to `full`
 - Integrate tool boolean argument remains named `all` (not the role)
-- Docs: permissions only ‚Äî no ‚Äúprefer full/split‚Äù marketing copy; stating unset‚Üí`full` as fact is OK
+- Docs: permissions only ‚Ä?no ‚Äúprefer full/split‚Ä?marketing copy; stating unset‚Üí`full` as fact is OK
 - Do not change status machine, multi-repo, verify, worktree layout, or auto-cleanup after integrate
 - Method-level comments on new exported funcs/consts per project rules
 
@@ -25,9 +25,9 @@
 | File | Responsibility |
 |------|----------------|
 | `internal/mcp/role.go` | Role enum, `RoleFromEnv`, `ToolNames` |
-| `internal/mcp/role_test.go` | Role/default/alias/tool-list tests |
+| `internal/mcp/role_test.go` | Role/default/tool-list tests |
 | `internal/mcp/tools.go` | MCP tool registration + handlers |
-| `internal/mcp/server.go` | Role ‚Üí register + instructions |
+| `internal/mcp/server.go` | Role ‚Ü?register + instructions |
 | `internal/mcp/instructions_*.md` | Host instructions per role |
 | `internal/abort/abort.go` | Abort without cleanup flags |
 | `internal/abort/abort_test.go` | Abort unit tests (new) |
@@ -117,8 +117,8 @@ func TestRoleFromEnvDefaultFull(t *testing.T) {
 	}
 }
 
-func TestRoleFromEnvFullAndAllAlias(t *testing.T) {
-	for _, v := range []string{"full", "FULL", "all", "ALL"} {
+func TestRoleFromEnvFull(t *testing.T) {
+	for _, v := range []string{"full", "FULL"} {
 		t.Setenv(EnvRole, v)
 		t.Setenv(EnvRoleLegacy, "")
 		r, err := RoleFromEnv()
@@ -177,7 +177,7 @@ const EnvRole = "MERGESIDING_MCP_ROLE"
 const EnvRoleLegacy = "AGENT_GIT_MCP_ROLE"
 
 // RoleFromEnv reads MERGESIDING_MCP_ROLE or AGENT_GIT_MCP_ROLE.
-// Empty/unset defaults to RoleFull. Value "all" is an alias for RoleFull.
+// Empty/unset defaults to RoleFull. Only writer|scheduler|full are valid.
 func RoleFromEnv() (Role, error) {
 	v := strings.TrimSpace(os.Getenv(EnvRole))
 	if v == "" {
@@ -191,7 +191,7 @@ func RoleFromEnv() (Role, error) {
 		return RoleWriter, nil
 	case RoleScheduler:
 		return RoleScheduler, nil
-	case RoleFull, Role("all"):
+	case RoleFull:
 		return RoleFull, nil
 	default:
 		return "", fmt.Errorf("%s must be writer, scheduler, or full (got %q)", EnvRole, v)
@@ -228,7 +228,7 @@ func ToolNames(role Role) []string {
 
 Run: `go test ./internal/mcp/ -count=1`
 
-Expected: PASS for role tests (server/tools may still compile; if tools.go still references old names, fix only in later tasks ‚Äî role_test should pass)
+Expected: PASS for role tests (server/tools may still compile; if tools.go still references old names, fix only in later tasks ‚Ä?role_test should pass)
 
 - [ ] **Step 5: Commit**
 
@@ -256,13 +256,13 @@ git commit -m "Add MCP full role (default when unset) and slim ToolNames."
 
 In `registerWriterTools`: keep start/ready; call `registerSharedTools` (shared must NOT register list).
 
-In `registerSharedTools`: only status, abort, cleanup ‚Äî delete `mergesiding_list` tool and `handleList`.
+In `registerSharedTools`: only status, abort, cleanup ‚Ä?delete `mergesiding_list` tool and `handleList`.
 
 In `registerSchedulerTools`: shared + integrate with optional `all`:
 
 ```go
 s.AddTool(mcp.NewTool("mergesiding_integrate",
-	mcp.WithDescription("PRIMARY ‚Äî integrate one ready queue head, or resume a slug (including blocked_partial). Set all=true to drain the ready queue until empty or stop_batch."),
+	mcp.WithDescription("PRIMARY ‚Ä?integrate one ready queue head, or resume a slug (including blocked_partial). Set all=true to drain the ready queue until empty or stop_batch."),
 	mcp.WithString("slug", mcp.Description("Optional slug; omit to peek ready queue")),
 	mcp.WithBoolean("all", mcp.Description("If true, loop integrate like former integrate_all (ignore slug)")),
 ), handleIntegrate)
@@ -292,7 +292,7 @@ func handleIntegrate(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 }
 ```
 
-Update `handleAbort` ‚Äî stop reading cleanup booleans; call `abort.Abort(paths.Default(), slug)` once Task 3 changes the signature. **For this task only**, if Abort still has 4 params, pass `false, false` temporarily OR do Task 3 first in the same session before compiling ‚Äî prefer completing Task 3 abort signature before finishing this step‚Äôs compile.
+Update `handleAbort` ‚Ä?stop reading cleanup booleans; call `abort.Abort(paths.Default(), slug)` once Task 3 changes the signature. **For this task only**, if Abort still has 4 params, pass `false, false` temporarily OR do Task 3 first in the same session before compiling ‚Ä?prefer completing Task 3 abort signature before finishing this step‚Äôs compile.
 
 Abort tool schema: remove `remove_worktree` / `delete_branch` properties.
 
@@ -303,7 +303,7 @@ func registerFullTools(s *server.MCPServer) {
 	registerWriterTools(s)
 	// Writer already registered shared; add integrate only once.
 	s.AddTool(mcp.NewTool("mergesiding_integrate",
-		mcp.WithDescription("PRIMARY ‚Äî integrate one ready queue head, or resume a slug (including blocked_partial). Set all=true to drain the ready queue until empty or stop_batch."),
+		mcp.WithDescription("PRIMARY ‚Ä?integrate one ready queue head, or resume a slug (including blocked_partial). Set all=true to drain the ready queue until empty or stop_batch."),
 		mcp.WithString("slug", mcp.Description("Optional slug; omit to peek ready queue")),
 		mcp.WithBoolean("all", mcp.Description("If true, loop integrate like former integrate_all (ignore slug)")),
 	), handleIntegrate)
@@ -373,7 +373,7 @@ Update writer/scheduler instruction files: remove `mergesiding_list` and `merges
 
 Run: `go test ./internal/mcp/ -count=1`
 
-Expected: PASS (may fail until Task 3 if Abort signature already changed ‚Äî order Task 3 next if compile errors)
+Expected: PASS (may fail until Task 3 if Abort signature already changed ‚Ä?order Task 3 next if compile errors)
 
 - [ ] **Step 5: Commit**
 
@@ -393,11 +393,11 @@ git commit -m "Slim MCP tools; register full role; fold integrate_all into all f
 - Modify: `internal/mcp/tools.go` (`handleAbort` call site) if still using old signature
 
 **Interfaces:**
-- Produces: `func Abort(p paths.Paths, taskSlug string) (*models.TaskRecord, error)` ‚Äî no cleanup params; does not call `cleanup.CleanupTask`
+- Produces: `func Abort(p paths.Paths, taskSlug string) (*models.TaskRecord, error)` ‚Ä?no cleanup params; does not call `cleanup.CleanupTask`
 
 - [ ] **Step 1: Write failing abort tests**
 
-`internal/abort/abort_test.go` ‚Äî use a temp MERGESIDING_HOME / store pattern from existing `store` or `start` tests if available. Minimal approach:
+`internal/abort/abort_test.go` ‚Ä?use a temp MERGESIDING_HOME / store pattern from existing `store` or `start` tests if available. Minimal approach:
 
 ```go
 package abort_test
@@ -415,7 +415,7 @@ import (
 // constructing paths.Paths with custom Home; otherwise follow store_test patterns.
 ```
 
-Inspect `internal/store/store_test.go` and `internal/paths/paths.go` for how tests set home. Mirror that: create an `active` task JSON, call `Abort`, assert status `aborted`, assert worktree paths untouched (no need to create real git if Abort no longer calls cleanup ‚Äî just assert no error and status).
+Inspect `internal/store/store_test.go` and `internal/paths/paths.go` for how tests set home. Mirror that: create an `active` task JSON, call `Abort`, assert status `aborted`, assert worktree paths untouched (no need to create real git if Abort no longer calls cleanup ‚Ä?just assert no error and status).
 
 Also add a CLI-level check in a small test or manual step: if no CLI test harness exists, add table-driven logic in `cmdAbort` and verify via `go test` only on abort package; then manually run CLI in Step 4.
 
@@ -431,7 +431,7 @@ func TestAbortSetsAbortedWithoutCleanupArgs(t *testing.T) {
 
 Copy temp-home setup from `internal/store/store_test.go`.
 
-- [ ] **Step 2: Run test ‚Äî expect fail if signature still has cleanup or cleanup still invoked**
+- [ ] **Step 2: Run test ‚Ä?expect fail if signature still has cleanup or cleanup still invoked**
 
 Run: `go test ./internal/abort/ -count=1`
 
@@ -449,7 +449,7 @@ func Abort(p paths.Paths, taskSlug string) (*models.TaskRecord, error) {
 
 Update all callers (`cli.cmdAbort`, `mcp.handleAbort`) to `abort.Abort(p, slug)`.
 
-- [ ] **Step 4: CLI ‚Äî reject old flags; drop list**
+- [ ] **Step 4: CLI ‚Ä?reject old flags; drop list**
 
 In `Execute` switch: change `case "status", "list":` to `case "status":` only; remove the `if cmd == "list"` branch.
 
@@ -468,7 +468,7 @@ func cmdAbort(p paths.Paths, args []string) int {
 }
 ```
 
-Update `printHelp` ‚Äî remove `list` line; abort line without cleanup flags.
+Update `printHelp` ‚Ä?remove `list` line; abort line without cleanup flags.
 
 - [ ] **Step 5: Run tests**
 
@@ -482,7 +482,7 @@ Manual smoke (optional but recommended):
 go run ./cmd/mergesiding abort --slug x --remove-worktree
 ```
 
-Expected: exit 2 and the stderr message (slug may also fail load ‚Äî flag check should run first)
+Expected: exit 2 and the stderr message (slug may also fail load ‚Ä?flag check should run first)
 
 - [ ] **Step 6: Commit**
 
@@ -510,11 +510,11 @@ For each role section, list tools only:
 
 - writer: start, ready, status, abort, cleanup
 - scheduler: status, abort, cleanup, integrate (`all` arg for batch)
-- full: all of the above; note unset/empty `MERGESIDING_MCP_ROLE` ‚Üí full; `all` accepted as alias of `full`
+- full: all of the above; note unset/empty `MERGESIDING_MCP_ROLE` ‚Ü?full; `all` accepted as alias of `full`
 
 Remove integrate_all / list mentions. State abort does not clean disk; cleanup after done/aborted.
 
-Config examples may show writer+scheduler and/or a single server without role env / with `full` ‚Äî without ‚Äúrecommended‚Äù wording.
+Config examples may show writer+scheduler and/or a single server without role env / with `full` ‚Ä?without ‚Äúrecommended‚Ä?wording.
 
 - [ ] **Step 2: Update README EN + ZH**
 
@@ -524,7 +524,7 @@ Same tool narrative; command examples without `list`; abort without cleanup flag
 
 Skill: MCP roles differ by tool access (link mcp docs); writer has no integrate; full has all tools; abort then optional cleanup; no list/integrate_all.
 
-Snippet: short pointer to Skill + `start ‚Üí ready ‚Üí integrate` + one line on MCP role tool access ‚Üí `docs/mcp.md`.
+Snippet: short pointer to Skill + `start ‚Ü?ready ‚Ü?integrate` + one line on MCP role tool access ‚Ü?`docs/mcp.md`.
 
 - [ ] **Step 4: Search verification**
 
@@ -534,7 +534,7 @@ Run (PowerShell):
 Select-String -Path README.md,README.zh-CN.md,docs\mcp.md,docs\mcp.zh-CN.md,skills\mergesiding\SKILL.md,cursor-rule-snippet.md,internal\mcp\instructions_*.md -Pattern "integrate_all|mergesiding_list|mergesiding list|abort.*remove-worktree|prefer full|recommended.*role" -CaseSensitive:$false
 ```
 
-Expected: no hits that recommend removed surface or preferred-role marketing (factual ‚Äúunset defaults to full‚Äù is OK).
+Expected: no hits that recommend removed surface or preferred-role marketing (factual ‚Äúunset defaults to full‚Ä?is OK).
 
 - [ ] **Step 5: Full test suite**
 
@@ -557,7 +557,7 @@ git commit -m "Align docs and Skill with slim surface and full MCP role."
 - Modify: `docs/superpowers/specs/2026-09-09-command-surface-slim-design.md` (already includes `full` + default)
 - This plan file
 
-- [ ] **Step 1: Confirm spec and code agree on `full` / unset default / `all` alias**
+- [ ] **Step 1: Confirm spec and code agree on `full` / unset default (no all alias)**
 
 - [ ] **Step 2: Commit any remaining doc/spec drift**
 
@@ -575,7 +575,7 @@ git commit -m "Add implementation plan for command surface slim-down."
 | Remove CLI list / MCP list | 2, 3 |
 | Remove integrate_all; integrate `all` arg | 2 |
 | abort status-only; CLI reject flags; MCP schema drop | 2, 3 |
-| Role `full` + unset default + alias `all` | 1, 2 |
+| Role `full` + unset default (no all alias) | 1, 2 |
 | Docs permissions-only + EN/ZH + Skill + snippet | 4 |
 | Tests for roles/abort/CLI | 1, 3, 4 |
 | No status machine / auto-cleanup / dual-role removal | honored (non-goals) |
@@ -585,4 +585,4 @@ git commit -m "Add implementation plan for command surface slim-down."
 - No TBD placeholders in tasks
 - Integrate arg `all` vs role `full` distinguished throughout
 - `registerFullTools` must not double-register shared tools
-- Abort signature change coordinated between Tasks 2‚Äì3 (implement Abort API before MCP compile finishes)
+- Abort signature change coordinated between Tasks 2‚Ä? (implement Abort API before MCP compile finishes)
