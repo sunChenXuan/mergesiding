@@ -28,7 +28,9 @@ English: [README.md](README.md)
 
 ## MCP（通用，不限某一款软件）
 
-通过 **stdio MCP** 提供工具。用同一个程序配 **两条**，角色不同。细节见上面的 mcp 文档。
+通过 **stdio MCP** 提供工具。用同一个程序配一条或多条，角色不同。细节见 [docs/mcp.zh-CN.md](docs/mcp.zh-CN.md)。
+
+拆分 writer + scheduler：
 
 ```json
 {
@@ -47,10 +49,28 @@ English: [README.md](README.md)
 }
 ```
 
+或一条服务暴露全部工具（未设角色 env 时默认为 `full`）：
+
+```json
+{
+  "mcpServers": {
+    "mergesiding": {
+      "command": "mergesiding",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
 配置文件写在哪，取决于你用的宿主（例如 Cursor 的 MCP 设置，或 Claude Desktop 的 `claude_desktop_config.json`）。找不到命令时，把 `"command"` 改成完整路径，例如 `D:/Tools/mergesiding.exe`。
 
+各角色 MCP 工具：
+
 - **writer**：开任务、标记做完、看状态、放弃、清理（不能合并）  
-- **scheduler**：合并（integrate），以及状态 / 放弃 / 清理  
+- **scheduler**：状态、放弃、清理、合并（`integrate` 的 `all` 参数可批量；不能 start/ready）  
+- **full**：以上全部；`MERGESIDING_MCP_ROLE` 未设置或为空 → `full`  
+
+`abort` 不会删 worktree 或分支；任务 `done` 或 `aborted` 后需要清理磁盘时再跑 `cleanup`。
 
 MCP 不限某一款宿主。示例（Cursor）：只装 MCP **不会**出现 `/mergesiding`——再装配套 Skill（`skills/mergesiding/SKILL.md` → `~/.cursor/skills/mergesiding/`），或把 [cursor-rule-snippet.md](cursor-rule-snippet.md) 写入用户规则。说明：[docs/mcp.zh-CN.md § 配套 Skill](docs/mcp.zh-CN.md#配套-skill--规则示例cursor)。
 
@@ -69,7 +89,16 @@ mergesiding ready --slug foo
 mergesiding integrate
 ```
 
+批量合并：`mergesiding integrate --all`。
+
 `ready` 表示**这次任务已经交卷**：不要再改那个 worktree。后面还要改 → 等合入（或必须放弃时用 `abort`），再 `start` **新的** slug / worktree。
+
+`abort` 只改任务状态，不会删 worktree。`aborted` 或 `done` 后要清磁盘，单独跑 `cleanup`：
+
+```text
+mergesiding abort --slug foo
+mergesiding cleanup --slug foo --remove-worktree --delete-branch
+```
 
 `integrate` 建议你自己跑，或交给单独的调度；不要让每个写代码的 Agent 随便合并。
 

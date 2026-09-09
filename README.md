@@ -29,7 +29,9 @@ go build -o mergesiding ./cmd/mergesiding
 
 ## MCP (any compatible host)
 
-mergesiding exposes tools over **stdio MCP**. Register **two** servers with the same binary and different roles. Details: [docs/mcp.md](docs/mcp.md).
+mergesiding exposes tools over **stdio MCP**. Register one or more servers with the same binary and different roles. Details: [docs/mcp.md](docs/mcp.md).
+
+Split roles (writer + scheduler):
 
 ```json
 {
@@ -48,10 +50,28 @@ mergesiding exposes tools over **stdio MCP**. Register **two** servers with the 
 }
 ```
 
+Or a single server with all tools (unset role env defaults to `full`):
+
+```json
+{
+  "mcpServers": {
+    "mergesiding": {
+      "command": "mergesiding",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
 Exact config file location depends on your host (for example Cursor’s MCP settings, or Claude Desktop’s `claude_desktop_config.json`). If the host can’t find `mergesiding`, set `"command"` to the full path (e.g. `C:/Tools/mergesiding.exe`).
 
-- **writer** — start tasks, mark ready, status, abort, cleanup (no merge)  
-- **scheduler** — integrate / integrate_all, plus status / abort / cleanup  
+MCP tool access by role:
+
+- **writer** — start, ready, status, abort, cleanup (no merge)  
+- **scheduler** — status, abort, cleanup, integrate (`all` arg for batch; no start/ready)  
+- **full** — all of the above; unset/empty `MERGESIDING_MCP_ROLE` → full  
+
+`abort` does not remove worktrees or branches; run `cleanup` after `done` or `aborted` when you want disk cleanup.
 
 MCP is host-agnostic. Example (Cursor): MCP alone does **not** add `/mergesiding` — install the companion Skill (`skills/mergesiding/SKILL.md` → `~/.cursor/skills/mergesiding/`) or paste [cursor-rule-snippet.md](cursor-rule-snippet.md) into User Rules. Details: [docs/mcp.md § Companion Skill](docs/mcp.md#companion-skill--rule-example-cursor).
 
@@ -70,7 +90,16 @@ mergesiding ready --slug foo
 mergesiding integrate
 ```
 
+Batch merge: `mergesiding integrate --all`.
+
 `ready` finishes **this** task: do not keep editing that worktree. Need more changes afterward → wait until integrate (or `abort` if you must drop it), then `start` a **new** slug / worktree.
+
+`abort` marks the task abandoned only — it does not delete the worktree. To remove disk artifacts after `aborted` or `done`, run `cleanup` separately:
+
+```text
+mergesiding abort --slug foo
+mergesiding cleanup --slug foo --remove-worktree --delete-branch
+```
 
 `integrate` is meant for you (or a small scheduler), not for every coding agent.
 
