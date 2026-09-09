@@ -9,7 +9,7 @@ You register **two** servers: same program, different `MERGESIDING_MCP_ROLE`.
 ## Writer
 
 Start a task, mark ready, status, abort, cleanup.  
-**Cannot** merge.
+**Cannot** merge. After `ready`, that task is finished for the writer — further work needs a new `start` (after integrate or abort).
 
 ```json
 "mergesiding-writer": {

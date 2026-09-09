@@ -11,7 +11,8 @@ chat root and use absolute worktree paths + Shell working_directory.
 ## Tool selection by intent
 
 - **Start an isolated parallel task** → `mergesiding_start` (PRIMARY for new work)
-- **Task done and worktree clean** → `mergesiding_ready`
+- **Task done and worktree clean** → `mergesiding_ready` (closes this task; do not keep editing that worktree)
+- **More changes after ready** → wait for integrate (or `mergesiding_abort`), then `mergesiding_start` a **new** slug
 - **Inspect progress / blocked / escalate** → `mergesiding_status` or `mergesiding_list`
 - **Abandon a task** → `mergesiding_abort`
 - **Remove DONE/ABORTED git artifacts** → `mergesiding_cleanup` (needs explicit flags)
@@ -20,12 +21,14 @@ chat root and use absolute worktree paths + Shell working_directory.
 ## Common chains
 
 - New work: `mergesiding_start` → edit/commit ONLY in returned worktree paths → `mergesiding_ready` → ask human/scheduler to integrate
+- Follow-up work: after integrate (or abort), `mergesiding_start` with a new slug / new worktree
 - After conflict escalate: resolve rebase in worktree → `mergesiding_ready` → scheduler integrates again
 - Diagnose: `mergesiding_status` with slug (read escalate_path / recovery_checklist)
 
 ## Anti-patterns
 
 - Do not edit the human base checkout for parallel tasks
+- Do not keep editing a worktree after `mergesiding_ready`
 - Do not merge into the integration branch yourself
 - Do not use `git checkout --ours/--theirs` unless the brief requires it
 - Do not call workspace root-switch tools for linked worktrees

@@ -9,7 +9,7 @@ mergesiding 走的是 **stdio MCP**。只要宿主能启动本地 MCP 服务，�
 ## Writer（写代码）
 
 能：开任务、标记做完、看状态、放弃、清理。  
-**不能**：合进主分支。
+**不能**：合进主分支。`ready` 之后这次任务对写者就算结束——后续改动要重新 `start`（在 integrate 或 abort 之后）。
 
 ```json
 "mergesiding-writer": {

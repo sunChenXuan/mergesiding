@@ -70,6 +70,8 @@ mergesiding ready --slug foo
 mergesiding integrate
 ```
 
+`ready` finishes **this** task: do not keep editing that worktree. Need more changes afterward → wait until integrate (or `abort` if you must drop it), then `start` a **new** slug / worktree.
+
 `integrate` is meant for you (or a small scheduler), not for every coding agent.
 
 ## Where the extra folders live

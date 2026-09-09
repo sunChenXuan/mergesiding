@@ -69,6 +69,8 @@ mergesiding ready --slug foo
 mergesiding integrate
 ```
 
+`ready` 表示**这次任务已经交卷**：不要再改那个 worktree。后面还要改 → 等合入（或必须放弃时用 `abort`），再 `start` **新的** slug / worktree。
+
 `integrate` 建议你自己跑，或交给单独的调度；不要让每个写代码的 Agent 随便合并。
 
 ## 任务目录默认在哪

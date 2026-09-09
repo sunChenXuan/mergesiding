@@ -8,7 +8,8 @@ Works with CLI or any MCP host (`mergesiding-writer` / `mergesiding-scheduler`).
 - Do **not** edit the human base checkout for parallel work.
 - Default worktrees: `<repo-parent>/.agent-git-worktrees/<repo-name>/<slug>`
 - Commit only in printed worktree paths on `task/<slug>`.
-- When done and clean: `mergesiding ready --slug <slug>`
+- When done and clean: `mergesiding ready --slug <slug>` — that closes **this** task; do not keep editing that worktree.
+- More changes later: integrate first (or `abort`), then `start` a **new** slug / worktree. One slug, one writer.
 - Remind the user to run `mergesiding integrate` (scheduler/human); writers must not merge into the integration branch themselves.
 - Writer MCP has no integrate tools.
 - On escalate under `MERGESIDING_HOME/escalate`: resolve conflicts only, continue rebase, then `ready` again.
